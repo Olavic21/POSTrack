@@ -8,7 +8,7 @@ import ImportSetupStep from './ImportSetupStep';
 import ImportPreviewStep from './ImportPreviewStep';
 import ImportSuccessStep from './ImportSuccessStep';
 import importService from '../../services/importService';
-import { IMPORT_ENTITY_TYPES, IMPORT_STEPS } from '../../utils/constants';
+import { IMPORT_ENTITY_TYPES, IMPORT_STEPS, IMPORT_REAL_TYPES } from '../../utils/constants';
 
 /**
  * Module A3 — Import Excel centralisé (ImportBatch) — Lead Frontend.
@@ -24,6 +24,11 @@ const ImportExportPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [applying, setApplying] = useState(false);
   const [result, setResult] = useState(null);
+  const [realImportType, setRealImportType] = useState('ZONE');
+  const [realFile, setRealFile] = useState(null);
+  const [realImportResult, setRealImportResult] = useState(null);
+  const [realImportError, setRealImportError] = useState(null);
+  const [realImportLoading, setRealImportLoading] = useState(false);
 
   // Un changement de type d'entité invalide le lot en cours.
   useEffect(() => {
@@ -73,6 +78,26 @@ const ImportExportPage = () => {
     setError(null);
     setStep(IMPORT_STEPS.SETUP);
   };
+
+  const handleRealImport = useCallback(async () => {
+    if (!realFile) return;
+    setRealImportLoading(true);
+    setRealImportError(null);
+    setRealImportResult(null);
+    try {
+      let res;
+      if (realImportType === 'ZONE') {
+        res = await importService.importZone(realFile);
+      } else {
+        res = await importService.importStock(realFile);
+      }
+      setRealImportResult(res);
+    } catch (err) {
+      setRealImportError(err?.response?.data?.detail || err?.message || "Erreur lors de l'import.");
+    } finally {
+      setRealImportLoading(false);
+    }
+  }, [realImportType, realFile]);
 
   const loading = step === IMPORT_STEPS.VALIDATING || step === IMPORT_STEPS.APPLYING;
   const isLoading = loading && !batch;
@@ -168,6 +193,66 @@ const ImportExportPage = () => {
         onConfirm={handleApply}
         confirming={applying}
       />
+
+      {/* Section Import Reel (ZONE / STOCK) */}
+      <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">Import de donnees reels</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Importez les fichiers Excel au format specifique du partenaire (ZONE geographique, STOCK DSM/POS).
+          Ces imports sont directement appliques sans etape de preview.
+        </p>
+
+        <div className="mt-4 flex flex-wrap gap-4">
+          {IMPORT_REAL_TYPES.map((t) => (
+            <button
+              key={t.value}
+              onClick={() => { setRealImportType(t.value); setRealFile(null); setRealImportResult(null); setRealImportError(null); }}
+              className={`rounded-lg border px-4 py-3 text-sm transition ${
+                realImportType === t.value
+                  ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              <div className="font-medium">{t.label}</div>
+              <div className="mt-1 text-xs opacity-70">{t.description}</div>
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 flex items-end gap-4">
+          <div className="flex-1">
+            <label className="mb-1 block text-sm font-medium text-slate-700">Fichier Excel</label>
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={(e) => setRealFile(e.target.files?.[0] || null)}
+              className="block w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
+            />
+          </div>
+          <button
+            onClick={handleRealImport}
+            disabled={!realFile || realImportLoading}
+            className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {realImportLoading ? 'Import en cours...' : `Importer ${realImportType}`}
+          </button>
+        </div>
+
+        {realImportError && (
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            {realImportError}
+          </div>
+        )}
+
+        {realImportResult && (
+          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+            <h3 className="text-sm font-semibold text-emerald-800">Import termine avec succes</h3>
+            <pre className="mt-2 overflow-x-auto text-xs text-emerald-700">
+              {JSON.stringify(realImportResult, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

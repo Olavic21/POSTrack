@@ -1,26 +1,26 @@
 import api from './api';
 
 /**
- * Service du Module A3 — Import Excel centralisé (ImportBatch).
+ * Service du Module A3 -- Import Excel centralise (ImportBatch).
  *
- * Conformément au contrat Frontend (TEAM_DEVELOPMENT §7) :
+ * Conformement au contrat Frontend (TEAM_DEVELOPMENT 7) :
  *   - POST  /partners/{id}/imports/validate
  *   - POST  /partners/{id}/imports/{batch_id}/apply
  *   - GET   /partners/{id}/imports/templates/{entity_type}  (gabarit officiel)
  *
- * Le préfixe /partners/{id}/ est automatiquement ajouté par l'intercepteur
- * Axios (services/api.js) à partir du partner_context_id.
+ * Le prefixe /partners/{id}/ est automatiquement ajoute par l'intercepteur
+ * Axios (services/api.js) a partir du partner_context_id.
  *
- * Source de vérité unique : aucune donnée d'import n'est simulée côté
- * client. En cas d'indisponibilité du backend, les erreurs sont propagées
- * à l'UI (états error dédiés).
+ * Source de verite unique : aucune donnee d'import n'est simulée cote
+ * client. En cas d'indisponibilite du backend, les erreurs sont propagees
+ * a l'UI (etats error dedies).
  */
 
 const unwrap = (response) => response?.data?.data ?? response?.data ?? response;
 
 export const importService = {
   /**
-   * Étape 3 — Dépôt & Validation du fichier.
+   * Etape 3 -- Depot & Validation du fichier.
    * @param {string} entityType
    * @param {File} file
    */
@@ -36,7 +36,7 @@ export const importService = {
   },
 
   /**
-   * Étape 5 — Confirmation / Commit du lot validé.
+   * Etape 5 -- Confirmation / Commit du lot valide.
    * @param {string} batchId
    */
   async apply(batchId) {
@@ -53,9 +53,9 @@ export const importService = {
   },
 
   /**
-   * Étape 1 — Téléchargement du gabarit Excel officiel.
+   * Etape 1 -- Telechargement du gabarit Excel officiel.
    * Passe par Axios afin d'embarquer le jeton Bearer (un simple <a href>
-   * déclencherait une 401 faute d'en-tête Authorization).
+   * declencherait une 401 faute d'en-tete Authorization).
    * @param {string} entityType
    * @returns {Promise<{ blob: Blob, fileName: string }>}
    */
@@ -70,10 +70,38 @@ export const importService = {
       : `gabarit-${entityType.toLowerCase()}.xlsx`;
     return { blob: response.data, fileName };
   },
+
+  /**
+   * Import direct d'un fichier ZONE (format geographique BTS).
+   * @param {File} file
+   */
+  async importZone(file) {
+    const body = new FormData();
+    body.append('file', file);
+
+    const response = await importServicePost('/imports/zone', body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return unwrap(response);
+  },
+
+  /**
+   * Import direct d'un fichier STOCK (format hierarchique DSM->POS).
+   * @param {File} file
+   */
+  async importStock(file) {
+    const body = new FormData();
+    body.append('file', file);
+
+    const response = await importServicePost('/imports/stock', body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return unwrap(response);
+  },
 };
 
 /**
- * Petit injecteur permettant de tester le service sans dépendre du client Axios
+ * Petit injecteur permettant de tester le service sans dependre du client Axios
  * global (les tests mockeront api.default directement).
  */
 const importServicePost = (url, body, config) => api.post(url, body, config);
@@ -81,7 +109,7 @@ const importServicePost = (url, body, config) => api.post(url, body, config);
 /** Normalise un lot Backend vers la forme attendue par l'UI. */
 function normalizeBatch(batch, entityType = 'POS', fileName = 'import.xlsx') {
   if (!batch || typeof batch !== 'object') {
-    throw new Error("Réponse d'import invalide : le backend n'a renvoyé aucune donnée.");
+    throw new Error("Reponse d'import invalide : le backend n'a renvoye aucune donnee.");
   }
   return {
     id: batch.id,

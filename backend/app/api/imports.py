@@ -14,6 +14,7 @@ from app.security.permissions import Role, IMPORT_ROLES
 from app.schemas.import_batch import ImportBatchOut, ImportValidationResult
 from app.schemas.pagination import Page
 from app.services.import_validation_service import validate_import, apply_import, REQUIRED_COLUMNS
+from app.services.odi_import_service import import_zone_file, import_stock_file
 
 router = APIRouter(prefix="/api/partners/{partner_id}/imports", tags=["Import Excel"])
 
@@ -160,3 +161,68 @@ def download_error_report(batch_id: int, partner_id: int = Depends(get_partner_c
         media_type="application/json",
         filename=f"rapport_erreurs_lot_{batch.id}.json",
     )
+
+
+# --- Import de donnees reels (format ZONE / STOCK) ---
+
+@router.post("/zone")
+async def import_zone_route(
+    file: UploadFile = File(...),
+    partner_id: int = Depends(get_partner_context),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles(*IMPORT_ROLES)),
+):
+    """Importe un fichier ZONE Excel (format geographique BTS avec bornes N/E/S/W).
+
+    Format attendu : colonnes SN, PARTNERS, BTS CODE NAME, PROMINENT SITES,
+    BOUNDARIES, QUARTER, STREET, RADIUS, GPS COORDINATES, COVERAGE,
+    CAPACITY, TRAFFIC VOLUME, POS.
+
+    Chaque BTS est representee par 4 lignes de bornes (N, E, S, W) +
+    une ligne principale avec les donnees GPS et couverture.
+    """
+    from app.services import audit_service
+
+    content = await file.read()
+    result = import_zone_file(db, partner_id=partner_id, file_bytes=content)
+
+    audit_service.log_action(
+        db, user_id=user.id, partner_id=partner_id, action="IMPORT_ZONE",
+        entity_type="BTS", entity_id=None,
+        details=f"Import ZONE : {result['created']} BTS cree(s), {result['updated']} mis a jour",
+    )
+
+    return result
+
+
+@router.post("/stock")
+async def import_stock_route(
+    file: UploadFile = File(...),
+    partner_id: int = Depends(get_partner_context),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles(*IMPORT_ROLES)),
+):
+    """Importe un fichier STOCK Excel (format hierarchique DSM->POS avec solde SIM).
+
+    Format attendu : colonnes Level, Organization Name, code (col3),
+    parent/type (col4), zone_type, ..., Parent Organization Name,
+    Current Balance.
+
+    Niveaux :
+    - 4 : Partenaire/Zone maitre
+    - 5 : DSM (org_id, matricule, zone_type, solde)
+    - 6 : POS (org_id, code, parent DSM, zone_type, solde)
+    """
+    from app.services import audit_service
+
+    content = await file.read()
+    result = import_stock_file(db, partner_id=partner_id, file_bytes=content)
+
+    audit_service.log_action(
+        db, user_id=user.id, partner_id=partner_id, action="IMPORT_STOCK",
+        entity_type="DSM", entity_id=None,
+        details=(f"Import STOCK : {result['created_dsm']} DSM cree(s), "
+                 f"{result['created_pos']} POS cree(s)"),
+    )
+
+    return result

@@ -1,5 +1,15 @@
-"""BTS (Base Transceiver Station) : infrastructure reseau d'un Partenaire."""
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, UniqueConstraint
+"""BTS (Base Transceiver Station) : infrastructure reseau d'un Partenaire.
+
+Champs etendus pour l'import de donnees reels (ex. fichier ZONE ODI) :
+- coverage_km2 : surface de couverture en km2
+- traffic_volume_gb : volume de trafic en Go
+- boundary_points : points limites de la zone de couverture (JSON)
+- prominent_site : site remarquable / point de repere
+- quarter : quartier / zone principale
+- street : rue principale
+- radius_m : rayon de couverture en metres
+"""
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, UniqueConstraint, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -26,6 +36,22 @@ class BTS(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     zone = Column(String(150), nullable=True)
+
+    # --- Champs etendus pour imports reels (ZONE ODI etc.) ---
+    # Surface de couverture en km2.
+    coverage_km2 = Column(Float, nullable=True)
+    # Volume de trafic en Go.
+    traffic_volume_gb = Column(Float, nullable=True)
+    # Points limites de la zone (N/E/S/W avec landmarks) : JSON array.
+    boundary_points = Column(JSON, nullable=True)
+    # Site remarquable / point de repere principal.
+    prominent_site = Column(String(255), nullable=True)
+    # Quartier / zone geographique principale.
+    quarter = Column(String(150), nullable=True)
+    # Rue principale.
+    street = Column(String(255), nullable=True)
+    # Rayon de couverture en metres.
+    radius_m = Column(Float, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

@@ -241,6 +241,12 @@ export const IMPORT_ENTITY_TYPES = [
   { value: 'PERFORMANCE', label: 'Performance / Relevés' },
 ];
 
+/** Types d'import reel (format partenaire specifique) */
+export const IMPORT_REAL_TYPES = [
+  { value: 'ZONE', label: 'Zone geographique (BTS + bornes)', description: 'Fichier ZONE avec GPS, couverture, bornes N/E/S/W' },
+  { value: 'STOCK', label: 'Stock DSM/POS (solde SIM)', description: 'Fichier STOCK hierarchique DSM->POS avec solde et codes couleur' },
+];
+
 /** Chaîne d'acceptation des fichiers (input & drag & drop) — Module A3 */
 export const IMPORT_FILE_ACCEPT = '.xlsx,.xls,.csv';
 

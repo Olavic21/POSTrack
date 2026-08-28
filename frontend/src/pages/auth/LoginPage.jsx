@@ -9,8 +9,8 @@ import Logo from '../../assets/logos/LOGO.jpeg';
 const mockAccounts = [
   { label: 'Admin', username: 'admin', password: 'admin123' },
   { label: 'Manager', username: 'manager', password: 'manager123' },
-  { label: 'Chef opérationnel', username: 'chef', password: 'chef123' },
-  { label: 'Opérationnel', username: 'oper', password: 'oper123' },
+  { label: 'Chef operationnel', username: 'chef', password: 'chef123' },
+  { label: 'Operationnel', username: 'oper', password: 'oper123' },
 ];
 
 const LoginPage = () => {
@@ -43,11 +43,11 @@ const LoginPage = () => {
     } catch (err) {
       if (err.isAuthExpired) {
         setError(
-          'Votre session locale est obsolète ou le jeton a expiré. Veuillez vider la session et vous reconnecter.'
+          'Votre session est obsolete. Reconnectez-vous.'
         );
       } else {
         setError(
-          err.response?.data?.detail || 'Échec de la connexion. Veuillez vérifier vos identifiants.'
+          err.response?.data?.detail || 'Echec de la connexion.'
         );
       }
     } finally {
@@ -62,42 +62,36 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-mesh-pattern px-4 py-12 sm:px-6 lg:px-8">
-      {/* Background gradient orbs */}
-      <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-brand-500/10 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-brand-400/10 blur-3xl" />
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-400/5 blur-3xl" />
-
+    <div className="relative flex min-h-screen items-center justify-center bg-[#f3f3f3] px-4 py-12 sm:px-6 lg:px-8">
       <div className="relative z-10 w-full max-w-md animate-fade-in-scale">
         {/* Main card */}
-        <div className="glass-strong overflow-hidden rounded-3xl border border-white/60 shadow-xl">
-          {/* Header with gradient accent */}
+        <div className="overflow-hidden rounded border border-[#dddbda] bg-white shadow-md">
+          {/* Blue header (Salesforce brand blue) */}
           <div className="bg-gradient-brand relative overflow-hidden px-8 pb-8 pt-10 text-center">
-            {/* Decorative circles */}
             <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
             <div className="pointer-events-none absolute -bottom-6 -left-6 h-24 w-24 rounded-full bg-white/5" />
 
             <div className="relative">
-              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-white/20 p-2 shadow-lg backdrop-blur-sm">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg bg-white/20 p-1 shadow-sm">
                 <img
                   src={Logo}
                   alt="POSTrack logo"
-                  className="h-16 w-auto rounded-xl object-cover"
+                  className="h-full w-auto rounded object-cover"
                 />
               </div>
-              <h2 className="text-3xl font-extrabold tracking-tight text-white drop-shadow-sm">
+              <h2 className="text-xl font-bold text-white drop-shadow-sm">
                 POSTrack
               </h2>
-              <p className="mt-1.5 text-sm font-medium text-indigo-100">
-                Plateforme de gestion des points de vente
+              <p className="mt-1 text-[13px] text-blue-100">
+                Gestion de la chaine Partenaire
               </p>
             </div>
           </div>
 
           {/* Form body */}
-          <div className="px-8 py-8">
-            <p className="mb-6 text-center text-sm font-medium text-slate-500">
-              Connectez-vous à votre compte
+          <div className="px-8 py-7">
+            <p className="mb-5 text-center text-[13px] font-medium text-[#444746]">
+              Connectez-vous a votre compte
             </p>
 
             {error && (
@@ -106,10 +100,10 @@ const LoginPage = () => {
               </div>
             )}
 
-            <form className="space-y-5" onSubmit={handleSubmit}>
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                  Nom d&apos;utilisateur / Email
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div className="space-y-1">
+                <label className="text-[12px] font-semibold text-[#444746]">
+                  Nom d'utilisateur
                 </label>
                 <input
                   type="text"
@@ -117,11 +111,11 @@ const LoginPage = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="input"
-                  placeholder="Entrez votre nom d'utilisateur"
+                  placeholder="Identifiant"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <div className="space-y-1">
+                <label className="text-[12px] font-semibold text-[#444746]">
                   Mot de passe
                 </label>
                 <input
@@ -130,18 +124,18 @@ const LoginPage = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="input"
-                  placeholder="Entrez votre mot de passe"
+                  placeholder="Mot de passe"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="btn btn-primary w-full py-3 text-base shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30"
+                className="btn btn-primary w-full py-2.5 text-[13px] shadow-sm"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     Connexion en cours...
                   </span>
                 ) : (
@@ -150,46 +144,46 @@ const LoginPage = () => {
               </button>
             </form>
 
-            {/* Demo accounts section */}
-            <div className="mt-7">
+            {/* Demo accounts */}
+            <div className="mt-6">
               <div className="relative mb-4">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200" />
+                  <div className="w-full border-t border-[#e5e5e5]" />
                 </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-white px-3 font-semibold uppercase tracking-wider text-slate-400">
-                    Comptes de démo
+                <div className="relative flex justify-center text-[11px]">
+                  <span className="bg-white px-3 font-semibold uppercase tracking-wider text-[#939393]">
+                    Comptes de demo
                   </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 gap-2">
                 {mockAccounts.map((account) => (
                   <button
                     key={account.username}
                     type="button"
                     onClick={() => handleMockSelect(account)}
-                    className={`group flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-sm font-medium transition-all duration-200 ${
+                    className={`flex items-center rounded border px-3 py-2 text-[13px] font-medium transition-colors ${
                       username === account.username
-                        ? 'border-brand-300 bg-brand-50 text-brand-700 shadow-sm'
-                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-brand-200 hover:bg-brand-50/50 hover:text-brand-600 hover:shadow-sm'
+                        ? 'border-[#0176d3] bg-[#e8f4fd] text-[#032d60]'
+                        : 'border-[#e5e5e5] bg-[#fafaf9] text-[#444746] hover:border-[#a8c7fa] hover:bg-[#e8f4fd]/50'
                     }`}
                   >
-                    <span>{account.label}</span>
+                    {account.label}
                   </button>
                 ))}
               </div>
 
-              <p className="mt-3 text-center text-xs text-slate-400">
-                Sélectionnez un compte, puis cliquez sur « Se connecter »
+              <p className="mt-3 text-center text-[11px] text-[#939393]">
+                Selectionnez un compte, puis cliquez sur "Se connecter"
               </p>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <p className="mt-6 text-center text-xs text-slate-400">
-          POSTrack · Gestion de la chaîne Partenaire → DSM → BTS → POS
+        <p className="mt-5 text-center text-[11px] text-[#939393]">
+          POSTrack
         </p>
       </div>
     </div>

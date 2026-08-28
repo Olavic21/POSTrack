@@ -8,7 +8,7 @@ import HierarchyNavDropdown from './HierarchyNavDropdown';
 import Logo from '../../assets/logos/LOGO.jpeg';
 
 /**
- * En-tête applicatif : marque, navigation hiérarchique, utilisateur et déconnexion.
+ * Header applicatif - style Salesforce : propre, minimal, bordure fine.
  */
 const Header = ({ onToggleSidebar }) => {
   const { user, logout } = useAuth();
@@ -24,31 +24,31 @@ const Header = ({ onToggleSidebar }) => {
   };
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 shadow-sm backdrop-blur-xl">
-      <div className="flex items-center gap-3 sm:gap-4">
+    <header className="fixed inset-x-0 top-0 z-50 flex h-[60px] items-center justify-between border-b border-[#e5e5e5] bg-white px-4">
+      <div className="flex items-center gap-3">
         <button
           type="button"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 md:hidden"
+          className="inline-flex h-8 w-8 items-center justify-center rounded text-[#444746] transition-colors hover:bg-[#f3f2f2] md:hidden"
           onClick={onToggleSidebar}
           aria-label="Ouvrir le menu"
         >
-          <Bars3Icon className="h-6 w-6" aria-hidden="true" />
+          <Bars3Icon className="h-5 w-5" aria-hidden="true" />
         </button>
         <Link to="/" className="flex items-center gap-2">
-          <img src={Logo} alt="POSTrack" className="h-9 w-9 rounded-lg object-cover" />
-          <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-indigo-600 to-sky-600 bg-clip-text text-transparent">POSTrack</span>
+          <img src={Logo} alt="POSTrack" className="h-8 w-8 rounded object-cover" />
+          <span className="text-[15px] font-bold tracking-tight text-[#032d60]">POSTrack</span>
         </Link>
-        <div className="hidden sm:block h-6 w-px bg-slate-200" />
+        <div className="hidden h-4 w-px bg-[#dddbda] sm:block" />
         <HierarchyNavDropdown />
       </div>
 
-      <div className="flex items-center gap-3 sm:gap-4">
-        <div className="hidden max-w-[18rem] rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2 text-right sm:block backdrop-blur-sm">
-          <p className="truncate text-sm font-semibold text-slate-900">{displayName}</p>
-          <p className="truncate text-xs text-slate-500">{roleLabel}</p>
+      <div className="flex items-center gap-3">
+        <div className="hidden text-right sm:block">
+          <p className="text-[13px] font-semibold text-[#181818]">{displayName}</p>
+          <p className="text-[11px] text-[#706e6b]">{roleLabel}</p>
         </div>
 
-        <Button type="button" variant="gray" className="text-sm" onClick={handleLogout}>
+        <Button type="button" variant="gray" className="text-[13px]" onClick={handleLogout}>
           Déconnexion
         </Button>
       </div>

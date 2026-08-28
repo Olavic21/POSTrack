@@ -1,20 +1,12 @@
 @import 'tailwindcss';
 
-/* ═══════════════════════════════════════════════════════════
-   POSTrack Design System — v2 « Horizon »
-   1. @theme     : jetons enregistrés auprès de Tailwind v4
-                   (génère les utilitaires bg-brand-*, text-brand-*,
-                   shadow-sm… — FIX : avant, --brand-* dans :root ne
-                   générait AUCUN utilitaire Tailwind)
-   2. :root      : jetons sémantiques consommés par les composants
-   3. Composants : .btn .badge .card .input .select .data-table …
-   Référence complète : docs/design-system/DESIGN_SYSTEM.md
-   ═══════════════════════════════════════════════════════════ */
+/* ===========================================================
+   POSTrack Design System — v3.1 "Salesforce-Inspired"
+   Clean, professional SaaS aesthetic with Salesforce DNA.
+   =========================================================== */
 
 @theme {
-  /* ── Marque — Indigo « Horizon » ───────────────────────────
-     600 = actions primaires et liens (6.3:1 sur blanc, AA ✓)
-     500 = accents KPI, icônes ; 700/800 = hover/active */
+  /* -- Brand -- Deep Indigo ---------------------------------- */
   --color-brand-50:  #eef2ff;
   --color-brand-100: #e0e7ff;
   --color-brand-200: #c7d2fe;
@@ -27,52 +19,62 @@
   --color-brand-900: #312e81;
   --color-brand-950: #1e1b4b;
 
-  /* ── Dataviz — ordre des séries (Recharts) ───────────────── */
-  --color-chart-1: #4f46e5;
-  --color-chart-2: #0ea5e9;
-  --color-chart-3: #10b981;
-  --color-chart-4: #f59e0b;
-  --color-chart-5: #ef4444;
-  --color-chart-6: #8b5cf6;
-  --color-chart-7: #14b8a6;
-  --color-chart-8: #64748b;
+  /* -- Dataviz series ----------------------------------------- */
+  --color-chart-1: #0176d3;
+  --color-chart-2: #1b96ff;
+  --color-chart-3: #2e844a;
+  --color-chart-4: #dd7a01;
+  --color-chart-5: #ea001e;
+  --color-chart-6: #7526c2;
+  --color-chart-7: #0d9dd1;
+  --color-chart-8: #5c6574;
 
-  /* ── Typographie ─────────────────────────────────────────── */
+  /* -- Typography -------------------------------------------- */
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
 
-  /* ── Ombres (teintées slate, 2 couches — style SaaS) ─────── */
-  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.05);
-  --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.05), 0 1px 3px 0 rgb(15 23 42 / 0.06);
-  --shadow-md: 0 2px 4px -1px rgb(15 23 42 / 0.05), 0 4px 8px -2px rgb(15 23 42 / 0.07);
-  --shadow-lg: 0 4px 8px -2px rgb(15 23 42 / 0.06), 0 12px 24px -4px rgb(15 23 42 / 0.10);
-  --shadow-xl: 0 8px 16px -4px rgb(15 23 42 / 0.08), 0 24px 48px -8px rgb(15 23 42 / 0.14);
-  --shadow-ring: 0 0 0 1px rgb(15 23 42 / 0.05);
+  /* -- Shadows (Salesforce-clean: very subtle) --------------- */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 2px 6px -1px rgb(0 0 0 / 0.07), 0 4px 12px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 4px 12px -2px rgb(0 0 0 / 0.08), 0 16px 32px -4px rgb(0 0 0 / 0.06);
+  --shadow-xl: 0 8px 24px -4px rgb(0 0 0 / 0.1), 0 32px 64px -8px rgb(0 0 0 / 0.08);
+  --shadow-ring: 0 0 0 1px rgb(0 0 0 / 0.05);
 }
 
 :root {
-  /* ── Surfaces ─────────────────────────────────────────── */
-  --surface-bg: #f8fafc;
+  /* -- Surfaces ---------------------------------------------- */
+  --surface-bg: #f3f3f3;
   --surface-card: #ffffff;
-  --surface-sunken: #f1f5f9;
-  --surface-overlay: rgba(15, 23, 42, 0.45);
+  --surface-sunken: #f3f3f3;
+  --surface-overlay: rgba(0, 0, 0, 0.4);
 
-  /* ── Textes ───────────────────────────────────────────── */
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  /* -- Texts ------------------------------------------------- */
+  --text-primary: #181818;
+  --text-secondary: #444746;
+  --text-muted: #706e6b;
 
-  /* ── Bordures ─────────────────────────────────────────── */
-  --border-light: #f1f5f9;
-  --border-default: #e2e8f0;
-  --border-strong: #cbd5e1;
-  --border-focus: #6366f1;
+  /* -- Borders ----------------------------------------------- */
+  --border-light: #f3f2f2;
+  --border-default: #e5e5e5;
+  --border-strong: #c9c7c5;
+  --border-focus: #0176d3;
 
-  /* ── Focus rings ──────────────────────────────────────── */
-  --focus-ring: 0 0 0 3px rgba(99, 102, 241, 0.18);
-  --focus-ring-error: 0 0 0 3px rgba(239, 68, 68, 0.15);
+  /* -- Salesforce accent colors ------------------------------- */
+  --sf-blue: #0176d3;
+  --sf-blue-dark: #014486;
+  --sf-blue-light: #1b96ff;
+  --sf-green: #2e844a;
+  --sf-yellow: #dd7a01;
+  --sf-red: #ea001e;
+  --sf-purple: #7526c2;
+  --sf-teal: #0d9dd1;
 
-  /* ── Alias legacy (compatibilité surcharges existantes) ── */
+  /* -- Focus rings ------------------------------------------- */
+  --focus-ring: 0 0 3px 1px rgba(1, 118, 211, 0.25);
+  --focus-ring-error: 0 0 3px 1px rgba(234, 0, 30, 0.25);
+
+  /* -- Legacy aliases ---------------------------------------- */
   --brand-50: #eef2ff;
   --brand-100: #e0e7ff;
   --brand-200: #c7d2fe;
@@ -83,10 +85,10 @@
   --brand-700: #4338ca;
   --brand-800: #3730a3;
   --brand-900: #312e81;
-  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.1);
 }
 
-/* ── Global resets ──────────────────────────────────────── */
+/* -- Global resets ------------------------------------------- */
 
 *,
 *::before,
@@ -104,20 +106,21 @@ html {
 body {
   font-family: var(--font-sans);
   background: var(--surface-bg);
-  color: #1e293b;
-  line-height: 1.6;
+  color: var(--text-primary);
+  line-height: 1.5;
   margin: 0;
+  font-size: 13px;
 }
 
-/* ── Focus visible ──────────────────────────────────────── */
+/* -- Focus visible ------------------------------------------- */
 
 :focus-visible {
-  outline: 2px solid var(--brand-500);
-  outline-offset: 2px;
-  border-radius: 6px;
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 4px;
 }
 
-/* ── Scrollbar styling ──────────────────────────────────── */
+/* -- Scrollbar ----------------------------------------------- */
 
 ::-webkit-scrollbar {
   width: 6px;
@@ -129,44 +132,29 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #c9c7c5;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #706e6b;
 }
 
-/* ── Animations ─────────────────────────────────────────── */
+/* -- Animations ---------------------------------------------- */
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fade-in-scale {
-  from { opacity: 0; transform: scale(0.97); }
+  from { opacity: 0; transform: scale(0.98); }
   to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes slide-in-left {
-  from { opacity: 0; transform: translateX(-8px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes slide-in-right {
-  from { opacity: 0; transform: translateX(8px); }
-  to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
 }
 
 @keyframes shimmer {
@@ -179,97 +167,84 @@ body {
   to { transform: rotate(360deg); }
 }
 
-/* Utility animation classes */
 .animate-fade-in {
-  animation: fade-in 0.3s ease-out both;
+  animation: fade-in 0.35s ease-out both;
 }
 
 .animate-fade-in-scale {
-  animation: fade-in-scale 0.3s ease-out both;
+  animation: fade-in-scale 0.35s ease-out both;
 }
 
 .animate-slide-up {
   animation: slide-up 0.4s ease-out both;
 }
 
-.animate-slide-in-left {
-  animation: slide-in-left 0.3s ease-out both;
-}
+.stagger-1 { animation-delay: 0.04s; }
+.stagger-2 { animation-delay: 0.08s; }
+.stagger-3 { animation-delay: 0.12s; }
+.stagger-4 { animation-delay: 0.16s; }
+.stagger-5 { animation-delay: 0.2s; }
+.stagger-6 { animation-delay: 0.24s; }
+.stagger-7 { animation-delay: 0.28s; }
+.stagger-8 { animation-delay: 0.32s; }
 
-.animate-pulse-soft {
-  animation: pulse-soft 2s ease-in-out infinite;
-}
-
-/* Staggered animation delays for lists */
-.stagger-1 { animation-delay: 0.05s; }
-.stagger-2 { animation-delay: 0.1s; }
-.stagger-3 { animation-delay: 0.15s; }
-.stagger-4 { animation-delay: 0.2s; }
-.stagger-5 { animation-delay: 0.25s; }
-.stagger-6 { animation-delay: 0.3s; }
-
-/* ── Card hover effect ──────────────────────────────────── */
+/* -- Card hover ---------------------------------------------- */
 
 .card-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .card-hover:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
-/* ── Glass morphism ─────────────────────────────────────── */
+/* -- Glass --------------------------------------------------- */
 
 .glass {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
 }
 
 .glass-strong {
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
 }
 
-/* ── Gradient backgrounds ───────────────────────────────── */
+/* -- Gradients ----------------------------------------------- */
 
 .bg-gradient-brand {
-  background: linear-gradient(160deg, #4338ca 0%, #4f46e5 55%, #6366f1 100%);
+  background: linear-gradient(135deg, #014486 0%, #0176d3 100%);
 }
 
 .bg-gradient-subtle {
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  background: linear-gradient(180deg, #fafaf9 0%, #f3f3f3 100%);
 }
 
 .bg-mesh-pattern {
   background-image:
-    radial-gradient(at 40% 20%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, rgba(14, 165, 233, 0.06) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, rgba(99, 102, 241, 0.04) 0px, transparent 50%);
+    radial-gradient(at 10% 5%, rgba(1, 118, 211, 0.04) 0px, transparent 50%),
+    radial-gradient(at 90% 0%, rgba(1, 118, 211, 0.03) 0px, transparent 50%);
 }
 
-/* ── Skeleton loading ───────────────────────────────────── */
+/* -- Skeleton ------------------------------------------------ */
 
 .skeleton {
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background: linear-gradient(90deg, #f3f2f2 25%, #e5e5e5 50%, #f3f2f2 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
-  border-radius: 8px;
+  border-radius: 4px;
 }
 
-/* ── Table row hover ────────────────────────────────────── */
+/* -- Table row hover ----------------------------------------- */
 
 .table-row-hover {
-  transition: background-color 0.15s ease;
+  transition: background-color 0.1s ease;
 }
 .table-row-hover:hover {
-  background-color: #f8fafc;
+  background-color: #f3f2f2;
 }
 
-/* ── Boutons ────────────────────────────────────────────── */
-/* Style plat premium (réf. Linear/Stripe) : 1 action primaire
-   par vue, secondaire en contour, tertiaire en fantôme.      */
+/* -- Buttons ------------------------------------------------- */
 
 .btn {
   display: inline-flex;
@@ -277,21 +252,20 @@ body {
   justify-content: center;
   gap: 0.5rem;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 13px;
   line-height: 1.25rem;
-  letter-spacing: -0.01em;
   padding: 0.5rem 1rem;
-  border-radius: 0.625rem;
+  border-radius: 4px;
   border: 1px solid transparent;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
-    box-shadow 0.15s ease, transform 0.1s ease;
+    box-shadow 0.15s ease;
   white-space: nowrap;
   user-select: none;
 }
 .btn:focus-visible {
-  outline: 2px solid var(--brand-500);
-  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+  outline: none;
 }
 .btn:disabled {
   opacity: 0.45;
@@ -302,88 +276,78 @@ body {
   transform: scale(0.98);
 }
 
-/* Primaire — action principale de la page (1 max par vue) */
 .btn-primary,
 .btn-indigo {
-  background: var(--brand-600);
+  background: var(--sf-blue);
   color: #fff;
-  box-shadow: var(--shadow-xs);
+  border-color: var(--sf-blue);
 }
 .btn-primary:hover,
 .btn-indigo:hover {
-  background: var(--brand-700);
-  box-shadow: var(--shadow-sm);
-}
-.btn-primary:active:not(:disabled),
-.btn-indigo:active:not(:disabled) {
-  background: var(--brand-800);
+  background: var(--sf-blue-dark);
+  border-color: var(--sf-blue-dark);
 }
 
-/* Secondaire — actions alternatives */
 .btn-secondary {
   background: #fff;
-  color: #475569;
+  color: var(--text-secondary);
   border-color: var(--border-default);
-  box-shadow: var(--shadow-xs);
 }
 .btn-secondary:hover {
-  background: #f8fafc;
+  background: #f9f9f9;
   border-color: var(--border-strong);
-  color: #334155;
-  box-shadow: var(--shadow-sm);
+  color: var(--text-primary);
 }
 
-/* Fantôme — barres d'outils, actions tertiaires */
 .btn-ghost {
   background: transparent;
-  color: #64748b;
+  color: var(--text-muted);
 }
 .btn-ghost:hover {
-  background: #f1f5f9;
-  color: #334155;
+  background: #f3f2f2;
+  color: var(--text-primary);
 }
 
-/* Sémantiques — usage restreint (confirmer, supprimer…) */
 .btn-success {
-  background: #059669;
+  background: var(--sf-green);
   color: #fff;
-  box-shadow: var(--shadow-xs);
+  border-color: var(--sf-green);
 }
 .btn-success:hover {
-  background: #047857;
-  box-shadow: var(--shadow-sm);
+  background: #236b3c;
+  border-color: #236b3c;
 }
 
 .btn-danger {
-  background: #dc2626;
+  background: var(--sf-red);
   color: #fff;
-  box-shadow: var(--shadow-xs);
+  border-color: var(--sf-red);
 }
 .btn-danger:hover {
-  background: #b91c1c;
-  box-shadow: var(--shadow-sm);
+  background: #c4001a;
+  border-color: #c4001a;
 }
 
 .btn-warning {
-  background: #d97706;
+  background: var(--sf-yellow);
   color: #fff;
-  box-shadow: var(--shadow-xs);
+  border-color: var(--sf-yellow);
 }
 .btn-warning:hover {
-  background: #b45309;
+  background: #b35e01;
+  border-color: #b35e01;
 }
 
 .btn-gray {
-  background: #f1f5f9;
-  color: #475569;
+  background: #f3f2f2;
+  color: var(--text-secondary);
   border-color: var(--border-default);
 }
 .btn-gray:hover {
-  background: #e2e8f0;
-  color: #334155;
+  background: #e5e5e5;
+  color: var(--text-primary);
 }
 
-/* Spinner intégré : <button class="btn btn-primary btn-loading" aria-busy="true"> */
 .btn-loading::before {
   content: '';
   width: 1em;
@@ -397,21 +361,15 @@ body {
 
 .btn-sm {
   padding: 0.375rem 0.75rem;
-  font-size: 0.8125rem;
-  border-radius: 0.5rem;
+  font-size: 12px;
 }
 
 .btn-lg {
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  border-radius: 0.75rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 14px;
 }
 
-.btn-icon {
-  padding: 0.5rem;
-}
-
-/* ── Contrôles de formulaire ────────────────────────────── */
+/* -- Form controls ------------------------------------------- */
 
 .input,
 .select,
@@ -419,18 +377,18 @@ body {
   display: block;
   width: 100%;
   padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  line-height: 1.375rem;
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--text-primary);
   background: #fff;
   border: 1px solid var(--border-default);
-  border-radius: 0.625rem;
-  box-shadow: var(--shadow-xs);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  border-radius: 4px;
+  box-shadow: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .input::placeholder,
 .textarea::placeholder {
-  color: #94a3b8;
+  color: #939393;
 }
 .input:hover,
 .select:hover,
@@ -441,96 +399,75 @@ body {
 .select:focus,
 .textarea:focus {
   outline: none;
-  border-color: var(--brand-500);
+  border-color: var(--sf-blue);
   box-shadow: var(--focus-ring);
 }
 .input:disabled,
 .select:disabled,
 .textarea:disabled {
-  background: var(--surface-sunken);
-  color: #94a3b8;
+  background: #f3f2f2;
+  color: #939393;
   cursor: not-allowed;
 }
 
-/* État erreur — à combiner avec aria-invalid="true" sur le champ */
 .input[aria-invalid='true'],
 .select[aria-invalid='true'],
 .textarea[aria-invalid='true'] {
-  border-color: #f87171;
+  border-color: var(--sf-red);
 }
 .input[aria-invalid='true']:focus,
 .select[aria-invalid='true']:focus,
 .textarea[aria-invalid='true']:focus {
-  border-color: #ef4444;
   box-shadow: var(--focus-ring-error);
 }
 
 .textarea {
-  min-height: 5.5rem;
+  min-height: 5rem;
   resize: vertical;
 }
 
 .select {
   padding-right: 2.25rem;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23706e6b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
   background-position: right 0.5rem center;
   background-size: 1.25em 1.25em;
   background-repeat: no-repeat;
 }
 
-.checkbox,
-.radio {
-  width: 1rem;
-  height: 1rem;
-  accent-color: var(--brand-600);
-  cursor: pointer;
-}
-.checkbox:disabled,
-.radio:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Libellés et textes d'aide (voir composant FormField) */
 .label {
   display: block;
-  margin-bottom: 0.375rem;
-  font-size: 0.8125rem;
+  margin-bottom: 0.25rem;
+  font-size: 12px;
   font-weight: 600;
-  color: #334155;
+  color: var(--text-secondary);
 }
 .field-help {
-  margin-top: 0.375rem;
-  font-size: 0.75rem;
-  line-height: 1rem;
-  color: #64748b;
+  margin-top: 0.25rem;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 .field-error {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin-top: 0.375rem;
-  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  font-size: 11px;
   font-weight: 500;
-  color: #dc2626;
+  color: var(--sf-red);
 }
 
-/* ── Badges ─────────────────────────────────────────────── */
+/* -- Badges -------------------------------------------------- */
 
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.2rem 0.625rem;
-  font-size: 0.75rem;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.25;
-  border-radius: 9999px;
+  border-radius: 3px;
   border: 1px solid transparent;
   white-space: nowrap;
 }
-/* Point de statut : <span class="badge badge-success badge-dot"> */
 .badge-dot::before {
   content: '';
   width: 0.375rem;
@@ -541,24 +478,24 @@ body {
 }
 
 .badge-success {
-  background: #ecfdf5;
-  color: #065f46;
-  border-color: #a7f3d0;
+  background: #e3f3e8;
+  color: #1e4d2b;
+  border-color: #b4dbbf;
 }
 .badge-warning {
-  background: #fffbeb;
-  color: #92400e;
-  border-color: #fde68a;
+  background: #fef4e5;
+  color: #6b3c00;
+  border-color: #fdd99b;
 }
 .badge-danger {
-  background: #fef2f2;
-  color: #991b1b;
-  border-color: #fecaca;
+  background: #fde8e8;
+  color: #8c0013;
+  border-color: #f9acac;
 }
 .badge-info {
-  background: #eff6ff;
-  color: #1e40af;
-  border-color: #bfdbfe;
+  background: #e8f4fd;
+  color: #032d60;
+  border-color: #a8c7fa;
 }
 .badge-indigo {
   background: #eef2ff;
@@ -566,74 +503,70 @@ body {
   border-color: #c7d2fe;
 }
 .badge-gray {
-  background: #f8fafc;
-  color: #475569;
-  border-color: #e2e8f0;
+  background: #f3f2f2;
+  color: #444746;
+  border-color: #dddbda;
 }
 .badge-sky {
-  background: #f0f9ff;
-  color: #075985;
-  border-color: #bae6fd;
+  background: #e8f4fd;
+  color: #032d60;
+  border-color: #a8c7fa;
 }
 
 .badge-sm {
-  padding: 0.125rem 0.5rem;
-  font-size: 0.6875rem;
+  padding: 0.0625rem 0.375rem;
+  font-size: 11px;
 }
 
-/* ── Cartes ─────────────────────────────────────────────── */
+/* -- Cards --------------------------------------------------- */
 
 .card {
   background: var(--surface-card);
   border: 1px solid var(--border-default);
-  border-radius: 0.875rem;
-  box-shadow: var(--shadow-sm);
+  border-radius: 4px;
+  box-shadow: var(--shadow-xs);
 }
 
 .card-elevated {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
 }
 
-/* Carte cliquable (navigation, sélection d'entité) */
 .card-interactive {
   cursor: pointer;
-  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 .card-interactive:hover {
-  border-color: var(--brand-200);
-  box-shadow: var(--shadow-md);
-}
-.card-interactive:active {
-  transform: scale(0.995);
+  border-color: #a8c7fa;
+  box-shadow: var(--shadow-sm);
 }
 
 .card-header {
-  padding: 1rem 1.25rem;
+  padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border-light);
 }
 
 .card-body {
-  padding: 1.25rem;
+  padding: 1rem;
 }
 
 .card-footer {
-  padding: 1rem 1.25rem;
+  padding: 0.75rem 1rem;
   border-top: 1px solid var(--border-light);
-  background: #f8fafc;
-  border-radius: 0 0 0.875rem 0.875rem;
+  background: #fafaf9;
+  border-radius: 0 0 4px 4px;
 }
 
-/* ── Section title ──────────────────────────────────────── */
+/* -- Section label ------------------------------------------- */
 
 .section-label {
-  font-size: 0.6875rem;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #64748b;
+  letter-spacing: 0.05em;
+  color: #706e6b;
 }
 
-/* ── Tableaux de données (voir composant DataTable) ─────── */
+/* -- Data tables --------------------------------------------- */
 
 .data-table {
   width: 100%;
@@ -641,15 +574,16 @@ body {
   border-spacing: 0;
 }
 .data-table thead th {
-  padding: 0.625rem 1rem;
-  background: #f8fafc;
+  padding: 0.5rem 0.75rem;
+  background: #f3f2f2;
   border-bottom: 1px solid var(--border-default);
+  border-top: 1px solid var(--border-default);
   text-align: left;
-  font-size: 0.6875rem;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: #64748b;
+  color: #444746;
   white-space: nowrap;
   user-select: none;
 }
@@ -657,69 +591,56 @@ body {
   cursor: pointer;
 }
 .data-table thead th.sortable:hover {
-  color: #334155;
-  background: #f1f5f9;
+  color: #181818;
+  background: #e5e5e5;
 }
 .data-table tbody td {
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--border-light);
-  font-size: 0.875rem;
-  color: #334155;
+  font-size: 13px;
+  color: var(--text-primary);
   vertical-align: middle;
 }
 .data-table tbody tr {
-  transition: background-color 0.12s ease;
+  transition: background-color 0.1s ease;
 }
 .data-table tbody tr:hover {
-  background: #f8fafc;
+  background: #f3f2f2;
 }
 .data-table tbody tr:last-child td {
   border-bottom: none;
 }
 .data-table tr.row-selected,
 .data-table tr.row-selected:hover {
-  background: #eef2ff;
-}
-.data-table.dense thead th {
-  padding: 0.5rem 0.75rem;
-}
-.data-table.dense tbody td {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8125rem;
-}
-/* En-tête collant : classe à poser sur le conteneur scrollable (max-height requise) */
-.data-table-container.sticky-header thead th {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  background: #e8f4fd;
 }
 
-/* ── Chips de filtres actifs ────────────────────────────── */
+/* -- Filter chips -------------------------------------------- */
 
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.625rem;
-  font-size: 0.75rem;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 12px;
   font-weight: 600;
-  color: #4338ca;
-  background: #eef2ff;
-  border: 1px solid #c7d2fe;
-  border-radius: 9999px;
+  color: #032d60;
+  background: #e8f4fd;
+  border: 1px solid #a8c7fa;
+  border-radius: 3px;
   white-space: nowrap;
 }
 .chip button {
   display: inline-flex;
-  border-radius: 9999px;
-  color: #6366f1;
+  border-radius: 3px;
+  color: #0176d3;
   transition: color 0.15s ease;
 }
 .chip button:hover {
-  color: #312e81;
+  color: #014486;
 }
 
-/* ── Accessibilité — mouvement réduit (WCAG 2.3.3) ──────── */
+/* -- Reduced motion (WCAG) ---------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -729,12 +650,9 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  html {
-    scroll-behavior: auto;
-  }
 }
 
-/* ── Print styles ───────────────────────────────────────── */
+/* -- Print --------------------------------------------------- */
 
 @media print {
   .no-print {

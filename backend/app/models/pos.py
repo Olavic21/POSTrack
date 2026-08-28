@@ -67,6 +67,14 @@ class POS(Base):
     stock_initial = Column(Integer, nullable=False, default=0, server_default="0")
     stock_actuel = Column(Integer, nullable=False, default=0, server_default="0")
 
+    # --- Champs etendus pour imports reels ---
+    # Identifiant organisationnel externe (systeme source du partenaire).
+    org_id = Column(String(50), nullable=True, index=True)
+    # Code de couleur / microzone (ex. LT3, LT4, LT5…).
+    color_code = Column(String(20), nullable=True)
+    # Solde SIM actuel du POS dans le systeme source (import stock).
+    sim_balance = Column(Float, nullable=True)
+
     # Colonnes additionnelles dynamiques definies par l'ADMIN avant un
     # import Excel (section 3.10) : stockage JSON generique.
     donnees_additionnelles = Column(JSON, nullable=True)
