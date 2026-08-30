@@ -21,6 +21,8 @@ class DashboardOut(BaseModel):
     primes_validees: int
     montant_primes_periode: Decimal
     requetes_ouvertes: int
+    requetes_total: int
+    requetes_terminees: int
     bts_saturees: int
     sim_en_stock: int
     sim_assignees: int

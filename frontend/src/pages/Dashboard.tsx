@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import usePartner from '../hooks/usePartner'
 import analyticsService from '../services/analyticsService'
 import partenaireService from '../services/partenaireService'
-import api from '../services/api'
+import posService from '../services/posService'
 import { getRoleLabel } from '../utils/roles'
 import PartnerIdentityCard from '../components/Partenaires/PartnerIdentityCard'
-import POSLinkageStatsCard from '../components/POS/POSLinkageStatsCard'
 import StatCard from '../components/Dashboard/StatCard'
 import ChartCard from '../components/Dashboard/ChartCard'
 import POSDistributionChart from '../components/Dashboard/POSDistributionChart'
@@ -22,19 +21,29 @@ type Stats = {
   primes_validees?: number
   montant_primes_periode?: string | number
   requetes_ouvertes?: number
+  requetes_total?: number
+  requetes_terminees?: number
   bts_saturees?: number
   sim_en_stock?: number
   sim_assignees?: number
 }
 
-type PosRow = {
+type SalesSummary = {
+  creation?: { stock_initial?: number | null; cumul?: number; objectif?: number | null }
+  redeploiement?: { stock_initial?: number | null; cumul?: number; objectif?: number | null }
+  sell_out?: { cumul?: number }
+  loading?: { cumul?: number }
+}
+
+type EnrichedPos = {
   id: number
   code_pos: string
-  nom: string
-  statut: string
-  type_pos: string
+  name: string
   linkage_status?: string
-  partenaire?: { nom: string }
+  loading?: number
+  sell_out?: number
+  recettes?: number
+  dsm?: { id?: number; full_name?: string }
 }
 
 type PartnerContext = {
@@ -44,46 +53,9 @@ type PartnerContext = {
   code?: string
 }
 
-type PosApiRow = {
-  id?: number
-  code_pos?: string
-  code?: string
-  nom?: string
-  name?: string
-  statut?: string
-  status?: string
-  type_pos?: string
-  type?: string
-  linkage_status?: string
-  holder_user_id?: number | null
-  partenaire?: { nom?: string; name?: string; code_partenaire?: string }
-}
-
-type ListEnvelope = { items?: PosApiRow[]; data?: PosApiRow[]; results?: PosApiRow[] }
-
-const normalizePosRows = (payload: unknown): PosRow[] => {
-  const envelope = (typeof payload === 'object' && payload !== null ? payload : {}) as ListEnvelope
-  const rows = Array.isArray(envelope.items)
-    ? envelope.items
-    : Array.isArray(envelope.data)
-      ? envelope.data
-      : Array.isArray(envelope.results)
-        ? envelope.results
-        : Array.isArray(payload)
-          ? (payload as PosApiRow[])
-          : []
-
-  return rows.map((row) => ({
-    id: row?.id ?? 0,
-    code_pos: row?.code_pos || row?.code || '',
-    nom: row?.nom || row?.name || '',
-    statut: row?.statut || row?.status || '',
-    type_pos: row?.type_pos || row?.type || '',
-    linkage_status: row?.linkage_status || (row?.holder_user_id ? 'LINKED' : 'UNLINKED'),
-    partenaire: row?.partenaire
-      ? { nom: row.partenaire?.nom || row.partenaire?.name || row.partenaire?.code_partenaire || '' }
-      : undefined,
-  }))
+const formatInt = (v: number | null | undefined) => {
+  if (v === null || v === undefined) return '0'
+  return new Intl.NumberFormat('fr-FR').format(v)
 }
 
 function Dashboard() {
@@ -93,7 +65,8 @@ function Dashboard() {
     user: { role?: string } | null
   }
   const [stats, setStats] = useState<Stats | null>(null)
-  const [recentPos, setRecentPos] = useState<PosRow[]>([])
+  const [salesSummary, setSalesSummary] = useState<SalesSummary | null>(null)
+  const [enrichedPos, setEnrichedPos] = useState<EnrichedPos[]>([])
   const [identity, setIdentity] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -103,27 +76,32 @@ function Dashboard() {
       if (!partnerContextId) {
         if (!ignore) {
           setStats(null)
-          setRecentPos([])
+          setSalesSummary(null)
+          setEnrichedPos([])
           setIdentity(null)
           setLoading(false)
         }
         return
       }
       try {
-        const [statsRes, posRes, identityRes] = await Promise.all([
+        const [statsRes, salesRes, posRes, identityRes] = await Promise.all([
           analyticsService.getDashboard(partnerContextId),
-          api.get('/pos', { params: { limit: 5, page: 1 } }),
+          analyticsService.getSalesSummary(partnerContextId),
+          posService.getEnriched({ limit: 100 }),
           partenaireService.getIdentity(partnerContextId),
         ])
         if (!ignore) {
           setStats(statsRes.data)
-          setRecentPos(normalizePosRows(posRes.data))
+          setSalesSummary(salesRes.data)
+          const posData = posRes.data?.items ?? posRes.data?.data ?? posRes.data?.results ?? posRes.data ?? []
+          setEnrichedPos(Array.isArray(posData) ? posData : [])
           setIdentity(identityRes.data?.data ?? identityRes.data ?? null)
         }
       } catch {
         if (!ignore) {
           setStats(null)
-          setRecentPos([])
+          setSalesSummary(null)
+          setEnrichedPos([])
           setIdentity(null)
         }
       } finally {
@@ -133,6 +111,32 @@ function Dashboard() {
     void load()
     return () => { ignore = true }
   }, [partnerContextId])
+
+  const simStats = useMemo(() => {
+    const linked = enrichedPos.filter((p) => p.linkage_status === 'LINKED')
+    const unlinked = enrichedPos.filter((p) => p.linkage_status === 'UNLINKED')
+    return {
+      linkedCount: linked.length,
+      linkedSellOut: linked.reduce((sum, p) => sum + (p.sell_out ?? 0), 0),
+      linkedLoading: linked.reduce((sum, p) => sum + (p.loading ?? 0), 0),
+      unlinkedCount: unlinked.length,
+      unlinkedSellOut: unlinked.reduce((sum, p) => sum + (p.sell_out ?? 0), 0),
+      unlinkedLoading: unlinked.reduce((sum, p) => sum + (p.loading ?? 0), 0),
+    }
+  }, [enrichedPos])
+
+  const bestPos = useMemo(() => {
+    return [...enrichedPos]
+      .sort((a, b) => (b.sell_out ?? 0) - (a.sell_out ?? 0))
+      .slice(0, 20)
+  }, [enrichedPos])
+
+  const stockInitialCreation = salesSummary?.creation?.stock_initial ?? 0
+  const stockInitialRedeploy = salesSummary?.redeploiement?.stock_initial ?? 0
+  const creationMensuelle = salesSummary?.creation?.cumul ?? 0
+  const redeploiementMensuel = salesSummary?.redeploiement?.cumul ?? 0
+  const stockFinalCreation = Math.max(0, (stockInitialCreation ?? 0) - creationMensuelle)
+  const stockFinalRedeploy = Math.max(0, (stockInitialRedeploy ?? 0) - redeploiementMensuel)
 
   return (
     <div className="space-y-6">
@@ -179,28 +183,24 @@ function Dashboard() {
           label="Parc POS"
           value={loading ? undefined : stats?.pos_total ?? 0}
           loading={loading}
-
         />
         <StatCard
           label="POS actifs"
           value={loading ? undefined : (stats?.pos_nouveau ?? 0) + (stats?.pos_reconduit ?? 0)}
           loading={loading}
           accent="green"
-
         />
         <StatCard
           label="SIM en stock"
           value={loading ? undefined : stats?.sim_en_stock ?? 0}
           loading={loading}
           accent="sky"
-
         />
         <StatCard
-          label="Requêtes ouvertes"
+          label="Requêtes en cours"
           value={loading ? undefined : stats?.requetes_ouvertes ?? 0}
           loading={loading}
           accent="amber"
-
         />
       </div>
 
@@ -211,15 +211,6 @@ function Dashboard() {
           value={loading ? undefined : stats?.bts_saturees ?? 0}
           loading={loading}
           accent="red"
-
-          small
-        />
-        <StatCard
-          label="SIM assignées"
-          value={loading ? undefined : stats?.sim_assignees ?? 0}
-          loading={loading}
-          accent="indigo"
-
           small
         />
         <StatCard
@@ -227,25 +218,6 @@ function Dashboard() {
           value={loading ? undefined : stats?.montant_primes_periode ? `${Number(stats.montant_primes_periode).toLocaleString('fr-FR')} FCFA` : '0 FCFA'}
           loading={loading}
           accent="green"
-
-          small
-        />
-      </div>
-
-      {/* Tertiary stat cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 animate-fade-in stagger-4">
-        <StatCard
-          label="POS créés"
-          value={loading ? undefined : stats?.pos_nouveau ?? 0}
-          loading={loading}
-
-          small
-        />
-        <StatCard
-          label="POS reconduits"
-          value={loading ? undefined : stats?.pos_reconduit ?? 0}
-          loading={loading}
-
           small
         />
         <StatCard
@@ -253,14 +225,122 @@ function Dashboard() {
           value={loading ? undefined : stats?.primes_validees ?? 0}
           loading={loading}
           accent="green"
-
           small
         />
       </div>
 
+      {/* ── Stocks initiaux ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 animate-fade-in stagger-4">
+        <div className="card overflow-hidden border-l-[3px] border-l-sky-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#0d9dd1]">Stocks initiaux</p>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Stock initial POS création</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(stockInitialCreation)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Stock initial POS reconduction</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(stockInitialRedeploy)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="card overflow-hidden border-l-[3px] border-l-indigo-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#0176d3]">Activité mensuelle</p>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Création mensuelle</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(creationMensuelle)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Redéploiement mensuel</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(redeploiementMensuel)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Stocks finaux ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 animate-fade-in stagger-5">
+        <div className="card overflow-hidden border-l-[3px] border-l-emerald-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2e844a]">Stocks finaux</p>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Stock final création</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(stockFinalCreation)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Stock final reconduction</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(stockFinalRedeploy)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="card overflow-hidden border-l-[3px] border-l-amber-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#dd7a01]">Requêtes en cours</p>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Requêtes traitées</span>
+                <span className="text-lg font-bold text-emerald-700">{loading ? '…' : formatInt(stats?.requetes_terminees ?? 0)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Requêtes non traitées</span>
+                <span className="text-lg font-bold text-amber-700">{loading ? '…' : formatInt(stats?.requetes_ouvertes ?? 0)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── SIM linkées / délinkées ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 animate-fade-in stagger-6">
+        <div className="card overflow-hidden border-l-[3px] border-l-emerald-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2e844a]">SIM linkées</p>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">SIM linkées</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(simStats.linkedCount)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Sell-out</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(simStats.linkedSellOut)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Loading</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(simStats.linkedLoading)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="card overflow-hidden border-l-[3px] border-l-amber-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#dd7a01]">SIM délinkées</p>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">SIM délinkées</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(simStats.unlinkedCount)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Sell-out</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(simStats.unlinkedSellOut)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Loading</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(simStats.unlinkedLoading)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── Graphiques analytiques ── */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 animate-fade-in stagger-5">
-        {/* POS Distribution */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 animate-fade-in stagger-7">
         <ChartCard title="Répartition des POS" subtitle="Distribution par statut">
           <POSDistributionChart
             loading={loading}
@@ -272,7 +352,6 @@ function Dashboard() {
           />
         </ChartCard>
 
-        {/* Saturation BTS */}
         <ChartCard title="Saturation BTS" subtitle="Ratio BTS normales vs saturées">
           <SaturationChart
             loading={loading}
@@ -282,8 +361,7 @@ function Dashboard() {
         </ChartCard>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 animate-fade-in stagger-6">
-        {/* Primes Donut */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 animate-fade-in stagger-8">
         <ChartCard title="Statut des Primes" subtitle="Validation des primes">
           <PrimeChart
             loading={loading}
@@ -292,7 +370,6 @@ function Dashboard() {
           />
         </ChartCard>
 
-        {/* SIM Stock */}
         <ChartCard title="Stock SIM" subtitle="Inventaire et affectation">
           <SIMStockChart
             loading={loading}
@@ -302,29 +379,22 @@ function Dashboard() {
         </ChartCard>
       </div>
 
-      {/* POS Linkage stats */}
-      {partnerContextId && (
-        <div className="animate-fade-in stagger-7">
-          <POSLinkageStatsCard />
-        </div>
-      )}
-
-      {/* Recent POS table */}
-      <div className="card overflow-hidden animate-fade-in stagger-8">
+      {/* ── Meilleurs POS du partenaire ── */}
+      <div className="card overflow-hidden animate-fade-in stagger-9">
         <div className="card-header flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">POS récents</h2>
-            <p className="text-xs text-slate-500">Derniers points de vente enregistrés</p>
+            <h2 className="text-lg font-bold text-slate-900">Meilleurs POS du partenaire</h2>
+            <p className="text-xs text-slate-500">Classement des 20 meilleurs points de vente par consommation moyenne.</p>
           </div>
           <span className="section-label text-slate-400">
-            {loading ? '…' : `${recentPos.length} entrée(s)`}
+            {loading ? '…' : `${bestPos.length} / ${enrichedPos.length}`}
           </span>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-100">
             <thead className="bg-slate-50/80">
               <tr>
-                {['Code', 'Nom', 'Partenaire', 'Type', 'Statut', 'Linkage'].map((col) => (
+                {['DSM', 'Numéro du POS', 'Moyenne de consommation'].map((col) => (
                   <th
                     key={col}
                     className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
@@ -337,52 +407,30 @@ function Dashboard() {
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center">
+                  <td colSpan={3} className="px-5 py-10 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
                       <span className="text-sm text-slate-400">Chargement…</span>
                     </div>
                   </td>
                 </tr>
-              ) : recentPos.length === 0 ? (
+              ) : bestPos.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-400">
+                  <td colSpan={3} className="px-5 py-10 text-center text-sm text-slate-400">
                     Aucun POS enregistré
                   </td>
                 </tr>
               ) : (
-                recentPos.map((p) => (
+                bestPos.map((p) => (
                   <tr key={p.id} className="table-row-hover transition-colors">
+                    <td className="whitespace-nowrap px-5 py-3.5 text-sm text-slate-500">
+                      {p.dsm?.full_name ?? '—'}
+                    </td>
                     <td className="whitespace-nowrap px-5 py-3.5 text-sm font-semibold text-brand-600">
                       {p.code_pos}
                     </td>
                     <td className="whitespace-nowrap px-5 py-3.5 text-sm font-medium text-slate-900">
-                      {p.nom}
-                    </td>
-                    <td className="whitespace-nowrap px-5 py-3.5 text-sm text-slate-500">
-                      {p.partenaire?.nom ?? '—'}
-                    </td>
-                    <td className="whitespace-nowrap px-5 py-3.5 text-sm text-slate-500">
-                      {p.type_pos}
-                    </td>
-                    <td className="whitespace-nowrap px-5 py-3.5 text-sm text-slate-500">
-                      {p.statut}
-                    </td>
-                    <td className="whitespace-nowrap px-5 py-3.5 text-sm">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          p.linkage_status === 'LINKED'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            p.linkage_status === 'LINKED' ? 'bg-emerald-500' : 'bg-amber-500'
-                          }`}
-                        />
-                        {p.linkage_status === 'LINKED' ? 'Linké' : 'Délinké'}
-                      </span>
+                      {formatInt(p.sell_out ?? 0)}
                     </td>
                   </tr>
                 ))

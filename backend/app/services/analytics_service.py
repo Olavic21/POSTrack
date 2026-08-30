@@ -78,6 +78,15 @@ def get_dashboard(db: Session, partner_id: int) -> dict:
         Requete.nombre_effectue + Requete.nombre_rejete < Requete.nombre_demande,
     ).scalar() or 0
 
+    requetes_total = db.query(func.count(Requete.id)).filter(
+        Requete.partner_id == partner_id,
+    ).scalar() or 0
+
+    requetes_terminees = db.query(func.count(Requete.id)).filter(
+        Requete.partner_id == partner_id,
+        Requete.nombre_effectue + Requete.nombre_rejete >= Requete.nombre_demande,
+    ).scalar() or 0
+
     # BTS proches / au-dela du seuil de saturation, sur leur DERNIER releve
     # uniquement. Optimisation : une sous-requete correlee (MAX(date_releve)
     # par bts_id) rejointe une seule fois, au lieu d'une requete par BTS
@@ -149,6 +158,8 @@ def get_dashboard(db: Session, partner_id: int) -> dict:
         "primes_validees": primes_validees,
         "montant_primes_periode": montant_primes,
         "requetes_ouvertes": requetes_ouvertes,
+        "requetes_total": requetes_total,
+        "requetes_terminees": requetes_terminees,
         "bts_saturees": bts_saturees,
         "sim_en_stock": sim_en_stock,
         "sim_assignees": sim_assignees,
@@ -192,6 +203,15 @@ def get_dsm_dashboard(db: Session, partner_id: int, dsm_id: int) -> dict:
         Requete.entites.any(),
     ).scalar() or 0
 
+    requetes_total = db.query(func.count(Requete.id)).filter(
+        Requete.partner_id == partner_id,
+    ).scalar() or 0
+
+    requetes_terminees = db.query(func.count(Requete.id)).filter(
+        Requete.partner_id == partner_id,
+        Requete.nombre_effectue + Requete.nombre_rejete >= Requete.nombre_demande,
+    ).scalar() or 0
+
     bts_saturees = db.query(func.count(BTS.id)).filter(BTS.partner_id == partner_id).scalar() or 0
     sim_en_stock = db.query(func.count(SIM.id)).filter(
         SIM.partner_id == partner_id,
@@ -217,6 +237,8 @@ def get_dsm_dashboard(db: Session, partner_id: int, dsm_id: int) -> dict:
         "primes_validees": primes_validees,
         "montant_primes_periode": montant_primes,
         "requetes_ouvertes": requetes_ouvertes,
+        "requetes_total": requetes_total,
+        "requetes_terminees": requetes_terminees,
         "bts_saturees": bts_saturees,
         "sim_en_stock": sim_en_stock,
         "sim_assignees": sim_assignees,

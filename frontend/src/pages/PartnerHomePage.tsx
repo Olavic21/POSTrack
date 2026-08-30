@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import usePartner from '../hooks/usePartner'
 import analyticsService from '../services/analyticsService'
 import partenaireService from '../services/partenaireService'
@@ -57,19 +57,7 @@ type Identity = {
   nb_bts?: number
 }
 
-const features = [
-  { label: 'Dashboard', to: '/dashboard', desc: "Vue d'ensemble" },
-  { label: 'DSM', to: '/dsm', desc: 'Directeurs terrain' },
-  { label: 'POS du partenaire', to: '/partenaires/pos', desc: 'Points de vente' },
-  { label: 'BTS', to: '/bts', desc: 'Stations' },
-  { label: 'Suivi des ventes', to: '/ventes', desc: 'Revenus & objectifs' },
-  { label: 'Requêtes', to: '/requetes', desc: 'Demandes ouvertes' },
-  { label: 'Primes', to: '/primes', desc: 'Performance' },
-  { label: 'Stock SIM', to: '/sims', desc: 'Inventaire' },
-]
-
 export default function PartnerHomePage() {
-  const navigate = useNavigate()
   const { partnerContextId, partner } = usePartner() as {
     partnerContextId: number | null
     partner: PartnerContext | null
@@ -127,38 +115,6 @@ export default function PartnerHomePage() {
       {/* Partner identity */}
       <div className="animate-fade-in stagger-1">
         <PartnerIdentityCard identity={identity} loading={loading} />
-      </div>
-
-      {/* Feature navigation */}
-      <div className="card overflow-hidden animate-fade-in stagger-2">
-        <div className="card-header flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Fonctionnalités</h2>
-            <p className="text-xs text-slate-500">Sélectionnez un module pour accéder à la vue correspondante.</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate('/select-partner')}
-            className="btn btn-secondary btn-sm"
-          >
-            Changer de partenaire
-          </button>
-        </div>
-        <div className="card-body grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-          {features.map((feature) => (
-            <Link
-              key={feature.label}
-              to={feature.to}
-              className="group flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/50 px-4 py-3.5 text-left transition-all duration-200 hover:border-brand-200 hover:bg-brand-50/50 hover:shadow-sm"
-            >
-
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-900 group-hover:text-brand-700 transition-colors">{feature.label}</p>
-                <p className="text-xs text-slate-500">{feature.desc}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
       </div>
 
       {/* ── Graphiques analytiques ── */}

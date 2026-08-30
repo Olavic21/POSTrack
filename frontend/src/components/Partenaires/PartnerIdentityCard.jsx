@@ -104,17 +104,17 @@ export default function PartnerIdentityCard({ identity, loading = false }) {
         <Section title="Responsable">
           <Field label="Nom" value={displayValue(identity?.responsable_name)} />
           <Field label="Contact" value={displayValue(identity?.responsable_contact)} />
-          <Field label="ID responsable" value={displayUserId(identity?.responsable_user_id, identity?.responsable_username)} />
+          <Field label="Autre contact" value={displayUserId(identity?.responsable_user_id, identity?.responsable_username)} />
         </Section>
 
         <Section title="Commercial">
           <Field label="Nom" value={displayValue(identity?.commercial_name)} />
           <Field label="Contact" value={displayValue(identity?.commercial_contact)} />
-          <Field label="ID commercial" value={displayUserId(identity?.commercial_user_id, identity?.commercial_username)} />
+          <Field label="Autre contact du commercial" value={displayUserId(identity?.commercial_user_id, identity?.commercial_username)} />
         </Section>
 
-        <Section title="Numéro MasterSIM">
-          <Field label="MasterSIM" value={displayValue(identity?.master_sim_number)} />
+        <Section title="Master SIM">
+          <Field label="Master SIM prise en portefeuille" value={displayValue(identity?.master_sim_number)} />
           <Field label="Adresse" value={displayValue(identity?.address)} />
           <Field label="Créé le" value={formatDate(identity?.created_at)} />
         </Section>
