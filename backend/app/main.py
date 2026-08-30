@@ -24,6 +24,7 @@ from app import models as _all_models  # noqa: F401  (charge tous les modeles av
 from app.api import auth as auth_router
 from app.api import partner_pos, partner_bts, partner_geo, partner_sim, partner_dsm, dsm_geo
 from app.api import partner_primes, partner_requests, imports, analytics, admin
+from app.api import partner_dsm_objectives, partner_prime_grids
 from app.api import hierarchy as hierarchy_router
 from app.api import partenaires as partenaires_router
 
@@ -140,6 +141,8 @@ app.include_router(partner_requests.router)
 app.include_router(imports.router)
 app.include_router(analytics.router)
 app.include_router(admin.router)
+app.include_router(partner_dsm_objectives.router)
+app.include_router(partner_prime_grids.router)
 app.include_router(hierarchy_router.router)
 app.include_router(partenaires_router.router)
 

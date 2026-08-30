@@ -82,6 +82,11 @@ class MicroZone(Base):
     # estimee cote serveur.
     boundaries = Column(JSON, nullable=True)
 
+    # Coefficient de potentiel de la micro-zone (utilise pour la
+    # repartition automatique des objectifs DSM — systeme de primes).
+    # Ex: zone a fort potentiel = 1.20, zone modeste = 0.80.
+    potential_coefficient = Column(Float, nullable=False, default=1.0, server_default="1.0")
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     partner = relationship("Partner", back_populates="micro_zones")
