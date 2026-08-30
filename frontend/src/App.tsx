@@ -40,7 +40,11 @@ const AuditLogsPage = lazy(() => import('./pages/audit/AuditLogsPage'))
 const SalesTargetsPage = lazy(() => import('./pages/analytics/SalesTargetsPage'))
 const PartenaireCreatePage = lazy(() => import('./pages/partenaires/PartenaireCreatePage'))
 const PrimeCreatePage = lazy(() => import('./pages/primes/PrimeCreatePage'))
+const PartnerPrimesDashboard = lazy(() => import('./pages/primes/PartnerPrimesDashboard'))
+const PrimeGridsPage = lazy(() => import('./pages/primes/PrimeGridsPage'))
+const ObjectivesDistributionPage = lazy(() => import('./pages/primes/ObjectivesDistributionPage'))
 const PartnerPOSPage = lazy(() => import('./pages/partners/PartnerPOSPage'))
+const UsersPage = lazy(() => import('./pages/admin/UsersPage'))
 
 function App() {
   return (
@@ -132,6 +136,16 @@ function App() {
                 </RoleGuard>
               }
             />
+            <Route
+              path="users"
+              element={
+                <RoleGuard roles={ROLE_GROUPS.ADMIN_ONLY}>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <UsersPage />
+                  </Suspense>
+                </RoleGuard>
+              }
+            />
 
             <Route
               path="primes"
@@ -149,6 +163,36 @@ function App() {
                 <RoleGuard roles={ROLE_GROUPS.PARTNER_PORTFOLIO}>
                   <Suspense fallback={<LoadingSpinner />}>
                     <PrimeCreatePage />
+                  </Suspense>
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="primes/dsm"
+              element={
+                <RoleGuard roles={ROLE_GROUPS.PARTNER_PORTFOLIO}>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <PartnerPrimesDashboard />
+                  </Suspense>
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="primes/grids"
+              element={
+                <RoleGuard roles={ROLE_GROUPS.ADMIN_ONLY}>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <PrimeGridsPage />
+                  </Suspense>
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="primes/objectives"
+              element={
+                <RoleGuard roles={ROLE_GROUPS.ADMIN_ONLY}>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ObjectivesDistributionPage />
                   </Suspense>
                 </RoleGuard>
               }

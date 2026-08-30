@@ -72,14 +72,14 @@ const LoginPage = () => {
             <div className="pointer-events-none absolute -bottom-6 -left-6 h-24 w-24 rounded-full bg-white/5" />
 
             <div className="relative">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-lg bg-white/20 p-1 shadow-sm">
+              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-lg bg-white/20 p-1 shadow-sm">
                 <img
                   src={Logo}
                   alt="POSTrack logo"
                   className="h-full w-auto rounded object-cover"
                 />
               </div>
-              <h2 className="text-xl font-bold text-white drop-shadow-sm">
+              <h2 className="text-2xl font-bold text-white drop-shadow-sm">
                 POSTrack
               </h2>
               <p className="mt-1 text-[13px] text-blue-100">

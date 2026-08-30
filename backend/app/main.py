@@ -27,6 +27,7 @@ from app.api import partner_primes, partner_requests, imports, analytics, admin
 from app.api import partner_dsm_objectives, partner_prime_grids
 from app.api import hierarchy as hierarchy_router
 from app.api import partenaires as partenaires_router
+from app.api import users as users_router
 
 class _RequestIdFilter(logging.Filter):
     """Garantit que chaque enregistrement de log possede un request_id
@@ -143,6 +144,7 @@ app.include_router(analytics.router)
 app.include_router(admin.router)
 app.include_router(partner_dsm_objectives.router)
 app.include_router(partner_prime_grids.router)
+app.include_router(users_router.router)
 app.include_router(hierarchy_router.router)
 app.include_router(partenaires_router.router)
 

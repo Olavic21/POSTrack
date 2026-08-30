@@ -19,7 +19,6 @@ from app.models.partner import Partner
 from app.models.dsm import DSM
 from app.models.pos import POS, TypePos, StatutPos
 from app.models.bts import BTS
-from app.models.bts_releve import BTSReleve
 from app.models.sim import SIM, StatutSim
 from app.models.requete import Requete, TypeRequete, PrioriteRequete
 from app.security.permissions import Role
@@ -144,23 +143,8 @@ def seed():
                 latitude=b["latitude"], longitude=b["longitude"], zone=b["zone"],
             )
             db.add(obj)
-            db.flush()  # on récupère obj.id pour les relevés
+            db.flush()
             bts_objs[b["code_bts"]] = obj
-
-                # Relevés de charge/saturation des BTS (page "Historique des relevés")
-        now = datetime.now()
-        for _ts in (now, datetime(now.year, now.month, now.day)):
-            db.add(BTSReleve(
-                bts_id=bts_objs["BTS-MC-01"].id,
-                date_releve=_ts,
-                charge=92.0, debit=42.5, connexions=78, latence=24.0,
-                statut="actif", taux_saturation=88.0, rendement=94.2,
-            ))
-        db.add(BTSReleve(
-            bts_id=bts_objs["BTS-MC-01"].id, date_releve=now,
-            charge=64.0, debit=38.1, connexions=55, latence=18.0,
-            statut="actif", taux_saturation=60.0, rendement=88.5,
-        ))
 
         for iccid, statut, pos_id in SIMS:
             db.add(SIM(partner_id=pos_ids[pos_id].partner_id,
