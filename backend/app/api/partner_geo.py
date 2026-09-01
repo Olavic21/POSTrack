@@ -38,12 +38,32 @@ def _cross(o: tuple[float, float], a: tuple[float, float], b: tuple[float, float
 def _convex_hull(points: list[tuple[float, float]]) -> list[list[float]]:
     """Enveloppe convexe (Andrew monotone chain) des coordonnees reelles.
 
+    Filtre d'abord les points aberrants (> 2 écarts-types de la moyenne)
+    pour éviter que des coordonnées erronées n'étendent le territoire
+    au-delà de la zone réelle (ex: Douala pour ODI).
+
     Retourne un anneau [longitude, latitude] ferme (GeoJSON) ou liste vide
     si < 3 points distincts.
     """
+    import math
     pts = sorted({(round(float(x), 6), round(float(y), 6)) for x, y in points})
     if len(pts) < 3:
         return []
+
+    # Filtrer les points aberrants (outliers)
+    if len(pts) > 5:
+        lats = [p[0] for p in pts]
+        lngs = [p[1] for p in pts]
+        mean_lat = sum(lats) / len(lats)
+        mean_lng = sum(lngs) / len(lngs)
+        std_lat = math.sqrt(sum((l - mean_lat) ** 2 for l in lats) / len(lats)) or 1
+        std_lng = math.sqrt(sum((l - mean_lng) ** 2 for l in lngs) / len(lngs)) or 1
+        pts = [(lat, lng) for lat, lng in pts
+               if abs(lat - mean_lat) <= 2 * std_lat and abs(lng - mean_lng) <= 2 * std_lng]
+
+    if len(pts) < 3:
+        return []
+
     lower: list[tuple[float, float]] = []
     for p in pts:
         while len(lower) >= 2 and _cross(lower[-2], lower[-1], p) <= 0:

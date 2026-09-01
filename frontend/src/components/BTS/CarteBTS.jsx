@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
 /**
@@ -17,6 +17,22 @@ const STATUS_STYLE = {
   ACTIF: { color: '#16a34a', fillColor: '#16a34a', label: 'Actif' },
   MAINTENANCE: { color: '#eab308', fillColor: '#eab308', label: 'Maintenance' },
   HORS_SERVICE: { color: '#dc2626', fillColor: '#dc2626', label: 'Hors service' },
+}
+
+// Palette de teintes distinctes attribuées aux étendues de couverture :
+// chaque BTS reçoit une couleur propre (hachage stable par id) afin que
+// les zones voisines ne fusionnent plus en une masse verte uniforme.
+const COVERAGE_PALETTE = [
+  '#2563eb', '#7c3aed', '#db2777', '#ea580c', '#0d9488',
+  '#65a30d', '#0284c7', '#9333ea', '#e11d48', '#ca8a04',
+  '#059669', '#4f46e5',
+]
+
+const coverageColor = (bts, index) => {
+  if (bts.couleur) return bts.couleur
+  const seed = Number(bts.id)
+  const rank = Number.isFinite(seed) && seed !== 0 ? Math.abs(seed) : index + 1
+  return COVERAGE_PALETTE[rank % COVERAGE_PALETTE.length]
 }
 
 /** Convertit un rayon en km en mètres (Leaflet Circle utilise des mètres). */
@@ -69,19 +85,39 @@ export default function CarteBTS({ btsList = [], selectedId = null, onSelect = (
         />
 
         {/* Étendues de couverture + marqueurs */}
-        {validBts.map((bts) => {
+        {validBts.map((bts, index) => {
           const style = STATUS_STYLE[bts.statut] || STATUS_STYLE.ACTIF
           const selected = bts.id === selectedId || bts.id === hover?.id
+          const zoneColor = coverageColor(bts, index)
           return (
             <div key={bts.id}>
+              {/* Étendue : teinte unique par BTS, très transparente pour que
+                  les recouvrements restent lisibles ; contour fin pointillé
+                  hors service/maintenance, plein pour les BTS actives. */}
               <Circle
                 center={[bts.lat, bts.lng]}
                 pathOptions={{
-                  color: style.color,
-                  fillColor: style.fillColor,
-                  fillOpacity: 0.15,
+                  color: zoneColor,
+                  fillColor: zoneColor,
+                  fillOpacity: selected ? 0.16 : 0.07,
+                  weight: selected ? 2 : 1.2,
+                  opacity: 0.55,
+                  dashArray: bts.statut === 'ACTIF' ? undefined : '5 4',
                 }}
                 radius={rayonMeters}
+                interactive={false}
+              />
+
+              {/* Point central : porte la couleur du STATUT (cf. légende) */}
+              <CircleMarker
+                center={[bts.lat, bts.lng]}
+                radius={6}
+                pathOptions={{
+                  color: '#ffffff',
+                  weight: 2,
+                  fillColor: style.fillColor,
+                  fillOpacity: 1,
+                }}
                 interactive={false}
               />
 
@@ -128,14 +164,19 @@ export default function CarteBTS({ btsList = [], selectedId = null, onSelect = (
         </div>
       )}
 
-      {/* Légende */}
+      {/* Légende : le statut est porté par le point central de chaque BTS,
+          l'étendue circulaire reçoit une teinte propre à chaque BTS. */}
       <div className="absolute bottom-3 left-3 rounded bg-white/95 border border-gray-200 p-2 text-xs shadow-sm">
+        <div className="mb-1 font-medium text-gray-700">Statut (point central)</div>
         {Object.entries(STATUS_STYLE).map(([k, v]) => (
           <div key={k} className="flex items-center gap-1.5">
             <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: v.fillColor }} />
             <span className="text-gray-700">{v.label}</span>
           </div>
         ))}
+        <div className="mt-1 border-t border-gray-100 pt-1 text-gray-500">
+          Étendue : zone de teinte unique par BTS
+        </div>
       </div>
     </div>
   )

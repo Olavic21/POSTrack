@@ -3,16 +3,43 @@ import { useNavigate } from 'react-router-dom';
 import usePartner from '../../hooks/usePartner';
 import dsmService from '../../services/dsmService';
 
-const StatCard = ({ label, value, subLabel }) => (
-  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
-    <div className="mt-2 text-2xl font-bold text-slate-900">{value ?? '—'}</div>
-    {subLabel && <div className="mt-1 text-xs text-slate-600">{subLabel}</div>}
-  </div>
-);
+const StatCard = ({ label, value, subLabel, accent = 'slate' }) => {
+  const accents = {
+    slate: 'border-l-slate-400',
+    sky: 'border-l-sky-500',
+    indigo: 'border-l-indigo-500',
+    emerald: 'border-l-emerald-500',
+    amber: 'border-l-amber-500',
+    red: 'border-l-red-500',
+  };
+  return (
+    <div className={`rounded-xl border border-slate-200 border-l-[3px] ${accents[accent]} bg-white p-4 shadow-sm`}>
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="mt-2 text-2xl font-bold text-slate-900">{value ?? '—'}</div>
+      {subLabel && <div className="mt-1 text-xs text-slate-600">{subLabel}</div>}
+    </div>
+  );
+};
+
+const SectionCard = ({ title, accent = 'sky', children }) => {
+  const accents = {
+    sky: 'border-l-sky-500',
+    indigo: 'border-l-indigo-500',
+    emerald: 'border-l-emerald-500',
+    amber: 'border-l-amber-500',
+  };
+  return (
+    <div className={`card overflow-hidden border-l-[3px] ${accents[accent]}`}>
+      <div className="p-4">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#0d9dd1]">{title}</p>
+        <div className="mt-3 space-y-2">{children}</div>
+      </div>
+    </div>
+  );
+};
 
 const DSMRow = ({ dsm, onClick, onViewDetails }) => (
-  <div 
+  <div
     onClick={() => onClick(dsm.id)}
     className="cursor-pointer rounded-lg border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all"
   >
@@ -27,10 +54,7 @@ const DSMRow = ({ dsm, onClick, onViewDetails }) => (
       </div>
       <div className="ml-4 flex items-center gap-3">
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onViewDetails(dsm.id);
-          }}
+          onClick={(e) => { e.stopPropagation(); onViewDetails(dsm.id); }}
           className="text-sm font-medium text-slate-600 hover:text-indigo-600"
         >
           Dashboard
@@ -68,11 +92,11 @@ const DSMRow = ({ dsm, onClick, onViewDetails }) => (
       </div>
     </div>
     
-    {dsm.progression !== null && (
+    {dsm.progression !== null && dsm.progression !== undefined && (
       <div className="mt-3">
         <div className="flex items-center justify-between text-xs text-slate-600 mb-1">
           <span>Progression objectifs</span>
-          <span>{dsm.progression.toFixed(1)}%</span>
+          <span>{dsm.progression}%</span>
         </div>
         <div className="w-full bg-slate-200 rounded-full h-2">
           <div 
@@ -85,6 +109,16 @@ const DSMRow = ({ dsm, onClick, onViewDetails }) => (
   </div>
 );
 
+const formatInt = (v) => {
+  if (v === null || v === undefined) return '0';
+  return new Intl.NumberFormat('fr-FR').format(v);
+};
+
+const formatCurrency = (v) => {
+  if (v === null || v === undefined) return '0 FCFA';
+  return `${new Intl.NumberFormat('fr-FR').format(v)} FCFA`;
+};
+
 export default function DSMDashboardPage() {
   const navigate = useNavigate();
   const { partnerContextId } = usePartner();
@@ -92,21 +126,17 @@ export default function DSMDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // Filtres et tri
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('nb_pos_crees');
   const [sortOrder, setSortOrder] = useState('desc');
 
   useEffect(() => {
     let active = true;
-
     const loadDashboard = async () => {
       try {
         setLoading(true);
         setError('');
-        
         const response = await dsmService.getDashboard();
-        
         if (!active) return;
         setDashboardData(response.data);
       } catch (e) {
@@ -117,34 +147,20 @@ export default function DSMDashboardPage() {
         if (active) setLoading(false);
       }
     };
-
     void loadDashboard();
     return () => { active = false; };
   }, [partnerContextId]);
 
-  const handleDSMClick = (dsmId) => {
-    navigate(`/dsm/${dsmId}/pos`);
-  };
-
-  const handleViewDetails = (dsmId) => {
-    navigate(`/dsm/${dsmId}`);
-  };
-
+  const handleDSMClick = (dsmId) => navigate(`/dsm/${dsmId}/pos`);
+  const handleViewDetails = (dsmId) => navigate(`/dsm/${dsmId}`);
   const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('desc');
-    }
+    if (sortBy === field) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    else { setSortBy(field); setSortOrder('desc'); }
   };
 
   const filteredAndSortedDSMs = () => {
     if (!dashboardData?.dsms) return [];
-
     let filtered = [...dashboardData.dsms];
-
-    // Filtrage par recherche
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(dsm =>
@@ -153,50 +169,31 @@ export default function DSMDashboardPage() {
         (dsm.zone || '').toLowerCase().includes(term)
       );
     }
-
-    // Tri
     filtered.sort((a, b) => {
-      let comparison = 0;
-      
+      let c = 0;
       switch (sortBy) {
-        case 'full_name':
-          comparison = (a.full_name || '').localeCompare(b.full_name || '');
-          break;
-        case 'matricule':
-          comparison = (a.matricule || '').localeCompare(b.matricule || '');
-          break;
-        case 'nb_pos_crees':
-          comparison = (a.nb_pos_crees || 0) - (b.nb_pos_crees || 0);
-          break;
-        case 'nb_pos_actifs':
-          comparison = (a.nb_pos_actifs || 0) - (b.nb_pos_actifs || 0);
-          break;
-        case 'loading':
-          comparison = (a.loading || 0) - (b.loading || 0);
-          break;
-        case 'sell_out':
-          comparison = (a.sell_out || 0) - (b.sell_out || 0);
-          break;
-        case 'recettes':
-          comparison = (a.recettes || 0) - (b.recettes || 0);
-          break;
-        case 'requetes':
-          comparison = (a.requetes || 0) - (b.requetes || 0);
-          break;
-        default:
-          comparison = 0;
+        case 'full_name': c = (a.full_name || '').localeCompare(b.full_name || ''); break;
+        case 'matricule': c = (a.matricule || '').localeCompare(b.matricule || ''); break;
+        case 'nb_pos_crees': c = (a.nb_pos_crees || 0) - (b.nb_pos_crees || 0); break;
+        case 'nb_pos_actifs': c = (a.nb_pos_actifs || 0) - (b.nb_pos_actifs || 0); break;
+        case 'loading': c = (a.loading || 0) - (b.loading || 0); break;
+        case 'sell_out': c = (a.sell_out || 0) - (b.sell_out || 0); break;
+        case 'recettes': c = (a.recettes || 0) - (b.recettes || 0); break;
+        case 'requetes': c = (a.requetes_total || 0) - (b.requetes_total || 0); break;
+        default: c = 0;
       }
-
-      return sortOrder === 'asc' ? comparison : -comparison;
+      return sortOrder === 'asc' ? c : -c;
     });
-
     return filtered;
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-slate-600">Chargement du dashboard DSM...</div>
+        <div className="flex flex-col items-center gap-2">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+          <span className="text-sm text-slate-400">Chargement du dashboard DSM...</span>
+        </div>
       </div>
     );
   }
@@ -204,13 +201,23 @@ export default function DSMDashboardPage() {
   if (error) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-800">
-        <p>{error}</p>
+        <p className="font-medium">Erreur</p>
+        <p className="mt-1 text-sm">{error}</p>
       </div>
     );
   }
 
+  if (!dashboardData) return null;
+
   const filteredDSMs = filteredAndSortedDSMs();
-  const globalStats = dashboardData?.global_stats || {};
+  const gs = dashboardData.global_stats || {};
+  const si = dashboardData.stocks_initiaux || {};
+  const am = dashboardData.activite_mensuelle || {};
+  const sf = dashboardData.stocks_finaux || {};
+  const rq = dashboardData.requetes || {};
+  const sim = dashboardData.sim || {};
+  const perf = dashboardData.performance || {};
+  const prime = dashboardData.prime || {};
 
   return (
     <div className="space-y-6">
@@ -219,7 +226,7 @@ export default function DSMDashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Dashboard DSM</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Vue globale des DSM du partenaire - {dashboardData?.total_dsm || 0} DSM(s)
+            Vue globale des DSM du partenaire — {dashboardData.total_dsm || 0} DSM(s)
           </p>
         </div>
         <button
@@ -231,32 +238,90 @@ export default function DSMDashboardPage() {
         </button>
       </div>
 
-      {/* Indicateurs globaux */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <StatCard 
-          label="Total POS créés" 
-          value={globalStats.total_pos_crees} 
-        />
-        <StatCard 
-          label="Total POS actifs" 
-          value={globalStats.total_pos_actifs} 
-        />
-        <StatCard 
-          label="Total Loading" 
-          value={globalStats.total_loading} 
-        />
-        <StatCard 
-          label="Total Sell-out" 
-          value={globalStats.total_sell_out} 
-        />
-        <StatCard 
-          label="Total Recettes" 
-          value={globalStats.total_recettes ? `${globalStats.total_recettes.toLocaleString()} FCFA` : '—'} 
-        />
-        <StatCard 
-          label="Total Requêtes" 
-          value={globalStats.total_requetes} 
-        />
+      {/* ── Stocks initiaux ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 animate-fade-in stagger-1">
+        <SectionCard title="Stocks initiaux" accent="sky">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">Stock initial POS création</span>
+            <span className="text-lg font-bold text-slate-900">{formatInt(si.creation)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">Stock initial POS reconduction</span>
+            <span className="text-lg font-bold text-slate-900">{formatInt(si.reconduction)}</span>
+          </div>
+        </SectionCard>
+        <SectionCard title="Activité mensuelle" accent="indigo">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">Création mensuelle</span>
+            <span className="text-lg font-bold text-slate-900">{formatInt(am.creation)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">Redéploiement mensuel</span>
+            <span className="text-lg font-bold text-slate-900">{formatInt(am.redeploiement)}</span>
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* ── Stocks finaux ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 animate-fade-in stagger-2">
+        <SectionCard title="Stocks finaux" accent="emerald">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">Stock final création</span>
+            <span className="text-lg font-bold text-slate-900">{formatInt(sf.creation)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">Stock final reconduction</span>
+            <span className="text-lg font-bold text-slate-900">{formatInt(sf.reconduction)}</span>
+          </div>
+        </SectionCard>
+        <SectionCard title="Requêtes en cours" accent="amber">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">Requêtes traitées</span>
+            <span className="text-lg font-bold text-emerald-700">{formatInt(rq.traitees)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">Requêtes non traitées</span>
+            <span className="text-lg font-bold text-amber-700">{formatInt(rq.non_traitees)}</span>
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* ── SIM linkées / délinkées ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 animate-fade-in stagger-3">
+        <SectionCard title="SIM linkées" accent="emerald">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">SIM linkées</span>
+            <span className="text-lg font-bold text-slate-900">{formatInt(sim['linkées'])}</span>
+          </div>
+        </SectionCard>
+        <SectionCard title="SIM délinkées" accent="amber">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-600">SIM délinkées</span>
+            <span className="text-lg font-bold text-slate-900">{formatInt(sim['delinkées'])}</span>
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* ── Performance ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 animate-fade-in stagger-4">
+        <StatCard label="Sell-out global" value={formatInt(perf.sell_out)} accent="emerald" />
+        <StatCard label="Loading global" value={formatInt(perf.loading)} accent="sky" />
+      </div>
+
+      {/* ── Primes ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 animate-fade-in stagger-5">
+        <StatCard label="Prime période" value={formatCurrency(prime.periode)} accent="indigo" />
+        <StatCard label="Prime validée" value={formatCurrency(prime.validee)} accent="emerald" />
+      </div>
+
+      {/* ── Indicateurs globaux ── */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 animate-fade-in stagger-6">
+        <StatCard label="Total POS créés" value={gs.total_pos_crees} />
+        <StatCard label="Total POS actifs" value={gs.total_pos_actifs} />
+        <StatCard label="Total Loading" value={gs.total_loading} />
+        <StatCard label="Total Sell-out" value={gs.total_sell_out} />
+        <StatCard label="Total Recettes" value={formatCurrency(gs.total_recettes)} />
+        <StatCard label="Total Requêtes" value={gs.total_requetes} />
       </div>
 
       {/* Filtres et recherche */}
@@ -306,9 +371,9 @@ export default function DSMDashboardPage() {
       ) : (
         <div className="space-y-4">
           {filteredDSMs.map((dsm) => (
-            <DSMRow 
-              key={dsm.id} 
-              dsm={dsm} 
+            <DSMRow
+              key={dsm.id}
+              dsm={dsm}
               onClick={handleDSMClick}
               onViewDetails={handleViewDetails}
             />

@@ -52,6 +52,11 @@ const roleOptions = [
   { value: 'OPERATIONNEL', label: 'Opérationnel' },
 ]
 
+// Rôles rattachés à un partenaire : le choix du partenaire n'a de sens que
+// pour les opérationnels et chefs opérationnels (un manager ou un admin
+// supervise l'ensemble des partenaires sans y être rattaché).
+const ROLES_WITH_PARTNER: readonly string[] = ['OPERATIONNEL', 'CHEF_OPERATIONNEL']
+
 const roleBadgeClass = (role: string): string => {
   switch (role) {
     case 'ADMIN':
@@ -156,13 +161,15 @@ export default function UsersPage() {
   const handleSave = async () => {
     setSaving(true)
     try {
+      // Le rattachement partenaire ne s'applique qu'aux rôles opérationnels
+      const partnerId = ROLES_WITH_PARTNER.includes(formData.role) ? formData.partner_id : null
       if (editingId) {
         await api.patch(`/users/${editingId}`, {
           username: formData.username,
           email: formData.email,
           full_name: formData.full_name,
           role: formData.role,
-          partner_id: formData.partner_id,
+          partner_id: partnerId,
         })
       } else {
         await api.post('/users', {
@@ -171,7 +178,7 @@ export default function UsersPage() {
           password: formData.password,
           full_name: formData.full_name,
           role: formData.role,
-          partner_id: formData.partner_id,
+          partner_id: partnerId,
         })
       }
       closeModal()
@@ -404,7 +411,15 @@ const toggleActive = async (u: User) => {
                     <label className="block text-sm text-slate-600 mb-1">Rôle</label>
                     <select
                       value={formData.role}
-                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                      onChange={(e) => {
+                        const role = e.target.value
+                        setFormData({
+                          ...formData,
+                          role,
+                          // Un manager / admin n'appartient à aucun partenaire
+                          partner_id: ROLES_WITH_PARTNER.includes(role) ? formData.partner_id : null,
+                        })
+                      }}
                       className={inputClass}
                     >
                       {roleOptions.map((opt) => (
@@ -415,9 +430,9 @@ const toggleActive = async (u: User) => {
                     </select>
                   </div>
 
-                  {!editingId && (
+                  {!editingId && ROLES_WITH_PARTNER.includes(formData.role) && (
                     <div>
-                      <label className="block text-sm text-slate-600 mb-1">Partenaire</label>
+                      <label className="block text-sm text-slate-600 mb-1">Partenaire de rattachement</label>
                       <select
                         value={formData.partner_id ? String(formData.partner_id) : ''}
                         onChange={(e) =>

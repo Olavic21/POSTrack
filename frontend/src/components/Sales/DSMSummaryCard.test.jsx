@@ -79,10 +79,10 @@ describe('DSMSummaryCard', () => {
     expect(screen.getByText('Aucune donnée DSM disponible')).toBeInTheDocument();
   });
 
-  it('affiche la note sur les données manquantes', () => {
+  it('affiche la note sur les montants en FCFA', () => {
     render(<DSMSummaryCard data={mockData} />);
-    expect(screen.getByText(/Note/)).toBeInTheDocument();
-    expect(screen.getByText(/Les recettes de vente par DSM sont actuellement non disponibles/)).toBeInTheDocument();
+    expect(screen.getByText(/Montants en FCFA/)).toBeInTheDocument();
+    expect(screen.getByText(/le loading correspond au montant vendu par les POS/)).toBeInTheDocument();
   });
 
   it('gère le cas où data est null', () => {

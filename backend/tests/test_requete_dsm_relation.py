@@ -20,44 +20,51 @@ from app.services.requete_service import (
 @pytest.fixture
 def test_partner(db: Session):
     """Crée un partenaire de test."""
-    partner = Partner(
-        code="TEST_PARTNER_REQ",
-        name="Partenaire Test Requêtes",
-        is_active=True,
-    )
-    db.add(partner)
-    db.commit()
-    db.refresh(partner)
+    partner = db.query(Partner).filter(Partner.code == "TEST_PARTNER_REQ").first()
+    if not partner:
+        partner = Partner(
+            code="TEST_PARTNER_REQ",
+            name="Partenaire Test Requêtes",
+            is_active=True,
+        )
+        db.add(partner)
+        db.commit()
+        db.refresh(partner)
     return partner
 
 
 @pytest.fixture
 def test_dsm(db: Session, test_partner):
     """Crée un DSM de test."""
-    dsm = DSM(
-        partner_id=test_partner.id,
-        matricule="DSM_REQ_001",
-        full_name="Test DSM Requêtes",
-    )
-    db.add(dsm)
-    db.commit()
-    db.refresh(dsm)
+    dsm = db.query(DSM).filter(DSM.matricule == "DSM_REQ_001").first()
+    if not dsm:
+        dsm = DSM(
+            partner_id=test_partner.id,
+            matricule="DSM_REQ_001",
+            full_name="Test DSM Requêtes",
+        )
+        db.add(dsm)
+        db.commit()
+        db.refresh(dsm)
     return dsm
 
 
 @pytest.fixture
 def test_user(db: Session):
     """Crée un utilisateur de test."""
-    user = User(
-        email="user@test.com",
-        full_name="Test User",
-        role=Role.OPERATIONNEL,
-        is_active=True,
-    )
-    user.set_password("password123")
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    user = db.query(User).filter(User.email == "user@test.com").first()
+    if not user:
+        user = User(
+            username="test_user_req",
+            email="user@test.com",
+            full_name="Test User",
+            role=Role.OPERATIONNEL,
+            is_active=True,
+        )
+        user.set_password("password123")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
     return user
 
 

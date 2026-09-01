@@ -28,6 +28,12 @@ class POSPerformance(Base):
     performance_score = Column(Numeric(10, 2), nullable=True)
     source = Column(SAEnum(SourcePerformance), nullable=False, default=SourcePerformance.CALCUL)
 
+    # --- Montants d'argent (FCFA) -------------------------------------------
+    # revenue     = montant vendu par le POS (loading / recettes)
+    # stock_value = montant que le DSM a donné au POS (sell out)
+    revenue = Column(Numeric(12, 2), nullable=True, default=0)
+    stock_value = Column(Numeric(12, 2), nullable=True, default=0)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     pos = relationship("POS")

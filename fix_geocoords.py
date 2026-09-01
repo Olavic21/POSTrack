@@ -37,14 +37,11 @@ for code, (lat, lng) in bts_updates.items():
 db.commit()
 print(f'BTS mis à jour: {updated}')
 
-# 2. Rename ODI partner to AUDI
+# 2. Verify ODI partner name is correct
 partner = db.query(Partner).filter(Partner.code == 'PART-ODI').first()
 if partner:
     print(f'Partenaire avant: code={partner.code} nom={partner.name}')
-    partner.code = 'PART-AUDI'
-    partner.name = 'AUDI'
-    db.commit()
-    print(f'Partenaire renommé: code={partner.code} nom={partner.name}')
+    print(f'Partenaire ODI: code={partner.code} nom={partner.name}')
 
 # 3. Check BTS state
 bts_total = db.query(BTS).count()

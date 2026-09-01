@@ -73,7 +73,7 @@ def update_obj(
     db: Session = Depends(get_db),
     user: User = Depends(require_roles(Role.ADMIN)),
 ):
-    """Modification manuelle d'un objectif DSM."""
+    """Modification manuelle d'un objectif DSM avec traçabilité."""
     return update_objective(
         db,
         partner_id=partner_id,
@@ -81,4 +81,5 @@ def update_obj(
         creation_objective=payload.creation_objective,
         revenue_objective=payload.revenue_objective,
         user_id=user.id,
+        reason=payload.reason,
     )

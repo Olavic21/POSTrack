@@ -126,7 +126,7 @@ export default function DSMHomePage() {
         <Tile label="Parc POS" value={stats?.pos_total} />
         <Tile label="POS actifs" value={(stats?.pos_nouveau || 0) + (stats?.pos_reconduit || 0)} />
         <Tile label="BTS" value={stats?.bts_saturees} />
-        <Tile label="Requêtes ouvertes" value={stats?.requetes_ouvertes} />
+        <Tile label="Requêtes en cours" value={stats?.requetes_ouvertes} />
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

@@ -152,14 +152,22 @@ def update_objective(
     creation_objective: int | None = None,
     revenue_objective: Decimal | None = None,
     user_id: int,
+    reason: str | None = None,
 ) -> DSMObjective:
-    """Modification manuelle d'un objectif DSM par l'admin."""
+    """Modification manuelle d'un objectif DSM par l'admin.
+    
+    Enregistre l'ancienne et la nouvelle valeur dans l'audit.
+    """
     obj = db.query(DSMObjective).filter(
         DSMObjective.id == objective_id,
         DSMObjective.partner_id == partner_id,
     ).first()
     if not obj:
         raise NotFoundError("Objectif DSM introuvable dans ce Partenaire.")
+
+    # Sauvegarder les anciennes valeurs
+    old_creation = obj.creation_objective
+    old_revenue = float(obj.revenue_objective) if obj.revenue_objective else 0
 
     if creation_objective is not None:
         obj.creation_objective = creation_objective
@@ -170,11 +178,20 @@ def update_objective(
     db.commit()
     db.refresh(obj)
 
+    # Audit avec traçabilité complète
+    new_creation = obj.creation_objective
+    new_revenue = float(obj.revenue_objective) if obj.revenue_objective else 0
+
     audit_service.log_action(
         db, user_id=user_id, partner_id=partner_id,
         action="DSM_OBJECTIVE_UPDATE",
         entity_type="DSM_OBJECTIVE", entity_id=objective_id,
-        details=f"Obj creation={obj.creation_objective}, obj revenus={obj.revenue_objective}",
+        dsm_id=obj.dsm_id,
+        period_id=obj.prime_period_id,
+        old_value=f"POS={old_creation}, FCFA={old_revenue}",
+        new_value=f"POS={new_creation}, FCFA={new_revenue}",
+        reason=reason,
+        details=f"Obj creation={new_creation}, obj revenus={new_revenue}",
     )
 
     return obj

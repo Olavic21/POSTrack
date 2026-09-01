@@ -10,7 +10,10 @@ os.environ["SECRET_KEY"] = "test-secret-key-not-for-production"
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 if os.path.exists(TEST_DB_FILE):
-    os.remove(TEST_DB_FILE)
+    try:
+        os.remove(TEST_DB_FILE)
+    except PermissionError:
+        pass
 
 import pytest
 from fastapi.testclient import TestClient
@@ -35,7 +38,10 @@ def _setup_database():
     yield
     engine.dispose()
     if os.path.exists(TEST_DB_FILE):
-        os.remove(TEST_DB_FILE)
+        try:
+            os.remove(TEST_DB_FILE)
+        except PermissionError:
+            pass
 
 
 @pytest.fixture(scope="session")
@@ -153,9 +159,18 @@ def client_p2_pos(client, admin_token, seed):
 
 @pytest.fixture
 def db():
-    """Fixture de base de données pour les tests unitaires."""
-    db = SessionLocal()
+    """Fixture de base de donnees pour les tests unitaires.
+
+    Utilise une transaction de connexion pour isoler chaque test.
+    ROLLBACK a la fin du test pour garantir l'isolation.
+    """
+    from sqlalchemy.orm import sessionmaker
+    connection = engine.connect()
+    transaction = connection.begin()
+    db = sessionmaker(bind=connection)()
     try:
         yield db
     finally:
         db.close()
+        transaction.rollback()
+        connection.close()

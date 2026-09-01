@@ -397,21 +397,20 @@ def get_partner_loading_summary(
     if not partner:
         raise NotFoundError("Partenaire introuvable.")
 
-    # Loading = ce que le marche a consomme : on compte les mouvements SIM
-    # qui traduisent une consommation effective (VENTE ou ACTIVATION).
-    loading_movement_types = [TypeMouvementSim.VENTE, TypeMouvementSim.ACTIVATION]
-    loading_query = (
-        db.query(func.count(SIMMovement.id))
-        .join(SIM, SIMMovement.sim_id == SIM.id)
-        .join(POS, SIM.pos_id == POS.id)
-        .filter(POS.partner_id == partner_id, SIMMovement.movement_type.in_(loading_movement_types))
+    # Loading = montant d'argent vendu par les POS (FCFA). La mesure de
+    # reference est POSPerformance.revenue (alimentee par import/API/CALCUL) :
+    # on somme les periodes de performance qui recouvrent la fenetre demandee.
+    perf_query = (
+        db.query(func.coalesce(func.sum(POSPerformance.revenue), 0))
+        .join(POS, POSPerformance.pos_id == POS.id)
+        .filter(POS.partner_id == partner_id)
     )
     if period_start is not None:
-        loading_query = loading_query.filter(SIMMovement.created_at >= period_start)
+        perf_query = perf_query.filter(POSPerformance.period_end >= period_start)
     if period_end is not None:
-        loading_query = loading_query.filter(SIMMovement.created_at < period_end)
+        perf_query = perf_query.filter(POSPerformance.period_start < period_end)
 
-    loading_cumul = int(loading_query.scalar() or 0)
+    loading_cumul = int(perf_query.scalar() or 0)
 
     target = db.query(PartnerSalesTarget).filter(PartnerSalesTarget.partner_id == partner_id).order_by(
         PartnerSalesTarget.month.desc()
@@ -424,20 +423,18 @@ def get_partner_loading_summary(
             DSM.id,
             DSM.matricule,
             func.coalesce(DSM.full_name, DSM.matricule),
-            func.count(SIMMovement.id),
+            func.coalesce(func.sum(POSPerformance.revenue), 0),
         )
         .join(POS, POS.dsm_id == DSM.id)
-        .join(SIM, SIM.pos_id == POS.id)
-        .join(SIMMovement, SIMMovement.sim_id == SIM.id)
+        .join(POSPerformance, POSPerformance.pos_id == POS.id)
         .filter(
             POS.partner_id == partner_id,
-            SIMMovement.movement_type.in_(loading_movement_types),
         )
     )
     if period_start is not None:
-        dsm_query = dsm_query.filter(SIMMovement.created_at >= period_start)
+        dsm_query = dsm_query.filter(POSPerformance.period_end >= period_start)
     if period_end is not None:
-        dsm_query = dsm_query.filter(SIMMovement.created_at < period_end)
+        dsm_query = dsm_query.filter(POSPerformance.period_start < period_end)
 
     dsm_query = dsm_query.group_by(DSM.id, DSM.matricule, DSM.full_name).all()
 
@@ -447,6 +444,9 @@ def get_partner_loading_summary(
             "dsm_code": dsm_code,
             "dsm_name": dsm_name,
             "loading": int(loading or 0),
+            # Recette du DSM = montant vendu par ses POS (les deux valeurs
+            # coincident : le loading EST le chiffre d'affaires des POS).
+            "recette": int(loading or 0),
             "objectif": None,
             "progression": None,
         })
@@ -505,11 +505,13 @@ def get_partner_monthly_table(db: Session, partner_id: int) -> dict:
         .order_by(POS.date_creation.asc(), POS.id.asc())
         .all()
     )
-    sim_rows = (
-        db.query(SIMMovement)
-        .join(SIM)
-        .filter(SIMMovement.partner_id == partner_id)
-        .order_by(SIMMovement.created_at.asc(), SIMMovement.id.asc())
+    # Mesures monetaires (FCFA) : POSPerformance porte le montant vendu par
+    # le POS (revenue = loading) et le montant dote par le DSM (stock_value
+    # = sell-out) ; ces montants sont summes par periode de primes ci-dessous.
+    perf_rows = (
+        db.query(POSPerformance)
+        .join(POS, POSPerformance.pos_id == POS.id)
+        .filter(POS.partner_id == partner_id)
         .all()
     )
 
@@ -527,10 +529,22 @@ def get_partner_monthly_table(db: Session, partner_id: int) -> dict:
                 realisation = sum(1 for pos in pos_rows if pos.type_pos == TypePos.RECONDUIT and period.start_date <= pos.date_creation <= period.end_date)
                 prevision = target_row.redeployment_target if target_row else None
             elif kind == "sell_out":
-                realisation = sum(1 for mv in sim_rows if mv.movement_type in {TypeMouvementSim.VENTE, TypeMouvementSim.ACTIVATION} and period.start_date <= mv.created_at.date() <= period.end_date)
+                # Sell-out = montant que le DSM a donne au POS (FCFA) :
+                # somme de POSPerformance.stock_value sur la periode.
+                realisation = sum(
+                    int(perf.stock_value or 0)
+                    for perf in perf_rows
+                    if period.start_date <= perf.period_start and perf.period_end <= period.end_date
+                )
                 prevision = target_row.sell_out_target if target_row else None
             else:
-                realisation = sum(1 for mv in sim_rows if mv.movement_type == TypeMouvementSim.RECEPTION and period.start_date <= mv.created_at.date() <= period.end_date)
+                # Loading = montant vendu par les POS (FCFA) : somme de
+                # POSPerformance.revenue sur la periode.
+                realisation = sum(
+                    int(perf.revenue or 0)
+                    for perf in perf_rows
+                    if period.start_date <= perf.period_start and perf.period_end <= period.end_date
+                )
                 prevision = target_row.loading_target if target_row else None
 
             cumul_realisation += int(realisation)
@@ -584,23 +598,27 @@ def get_dsm_summary(db: Session, partner_id: int) -> dict:
         creation_realisation = pos_counts.get(TypePos.NOUVEAU, 0)
         redeploiement_realisation = pos_counts.get(TypePos.RECONDUIT, 0)
 
-        # Sell-out pour ce DSM
-        sell_out_realisation = db.query(func.count(SIMMovement.id)).filter(
-            SIMMovement.partner_id == partner_id,
-            SIMMovement.movement_type.in_(["VENTE", "ACTIVATION"]),
-        ).join(SIM, SIMMovement.sim_id == SIM.id).join(POS, SIM.pos_id == POS.id).filter(
-            POS.dsm_id == dsm.id
-        ).scalar() or 0
-
-        # Loading pour ce DSM
-        loading_realisation = db.query(func.count(SIM.id)).join(POS, SIM.pos_id == POS.id).filter(
+        # Sell-out pour ce DSM = montant d'argent que le DSM a donne au POS
+        # (FCFA) : somme de POSPerformance.stock_value des POS du DSM.
+        sell_out_realisation = db.query(func.coalesce(func.sum(POSPerformance.stock_value), 0)).join(
+            POS, POSPerformance.pos_id == POS.id
+        ).filter(
             POS.partner_id == partner_id,
             POS.dsm_id == dsm.id,
-            SIM.status == StatutSim.EN_STOCK,
         ).scalar() or 0
 
-        # Recettes de vente DSM (donnée manquante identifiée)
-        recettes_dsm = None  # À alimenter via import/API
+        # Loading pour ce DSM = montant d'argent vendu par les POS (FCFA) :
+        # somme de POSPerformance.revenue des POS du DSM.
+        loading_realisation = db.query(func.coalesce(func.sum(POSPerformance.revenue), 0)).join(
+            POS, POSPerformance.pos_id == POS.id
+        ).filter(
+            POS.partner_id == partner_id,
+            POS.dsm_id == dsm.id,
+        ).scalar() or 0
+
+        # Recettes de vente DSM = montant vendu par les POS du DSM
+        # (le loading etant precisement ce chiffre d'affaires).
+        recettes_dsm = int(loading_realisation) if loading_realisation else None
 
         # Objectifs depuis PartnerSalesTarget (globaux partenaire - pourraient être spécifiques DSM)
         objectif_creation = target.creation_target if target else None
@@ -622,9 +640,9 @@ def get_dsm_summary(db: Session, partner_id: int) -> dict:
             "realisation_creation": creation_realisation,
             "objectif_redeploiement": objectif_redeploiement,
             "realisation_redeploiement": redeploiement_realisation,
-            "loading": loading_realisation,
-            "sell_out": sell_out_realisation,
-            "recettes": recettes_dsm,  # Donnée manquante identifiée
+            "loading": int(loading_realisation or 0),
+            "sell_out": int(sell_out_realisation or 0),
+            "recettes": recettes_dsm,  # = montant vendu par les POS du DSM (FCFA)
             "progression_globale": progression_globale,
         })
 

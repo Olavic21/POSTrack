@@ -33,6 +33,7 @@ type SalesSummary = {
   redeploiement?: { stock_initial?: number | null; cumul?: number; objectif?: number | null }
   sell_out?: { cumul?: number }
   loading?: { cumul?: number }
+  revenue_global?: { objectif?: number | null; realisation?: number | null }
 }
 
 type EnrichedPos = {
@@ -333,6 +334,70 @@ function Dashboard() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-slate-600">Loading</span>
                 <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(simStats.unlinkedLoading)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Résumé Primes ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-fade-in stagger-7">
+        <div className="card overflow-hidden border-l-[3px] border-l-indigo-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#0176d3]">Prime POS</p>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">POS réalisés</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt((stats?.pos_nouveau ?? 0))}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Primes en attente</span>
+                <span className="text-lg font-bold text-amber-600">{loading ? '…' : formatInt(stats?.primes_en_attente ?? 0)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Primes validées</span>
+                <span className="text-lg font-bold text-emerald-600">{loading ? '…' : formatInt(stats?.primes_validees ?? 0)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="card overflow-hidden border-l-[3px] border-l-emerald-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2e844a]">Performance</p>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Sell-out total</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(salesSummary?.sell_out?.cumul ?? 0)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Loading total</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(salesSummary?.loading?.cumul ?? 0)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="card overflow-hidden border-l-[3px] border-l-sky-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#0d9dd1]">Revenus</p>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Objectif</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(salesSummary?.revenue_global?.objectif ?? 0)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Réalisé</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : salesSummary?.revenue_global?.realisation != null ? formatInt(salesSummary.revenue_global.realisation) : '—'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="card overflow-hidden border-l-[3px] border-l-amber-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#dd7a01]">Montant primes</p>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Total période</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : stats?.montant_primes_periode ? `${Number(stats.montant_primes_periode).toLocaleString('fr-FR')} FCFA` : '0 FCFA'}</span>
               </div>
             </div>
           </div>

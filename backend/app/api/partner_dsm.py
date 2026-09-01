@@ -32,10 +32,22 @@ def list_dsm(partner_id: int = Depends(get_partner_context),
 @router.get("/dashboard")
 def dsm_dashboard(partner_id: int = Depends(get_partner_context),
                   db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    """Dashboard DSM global : statistiques aggrégées pour tous les DSM du partenaire."""
+    """Dashboard DSM global : statistiques aggrégées pour tous les DSM du partenaire.
+    
+    Inclut les sections spécifiques demandées :
+    - Stocks initiaux (POS création / reconduction)
+    - Activité mensuelle (Création / Redéploiement)
+    - Stocks finaux
+    - Requêtes (traitées / non traitées / en cours)
+    - SIM (linkées / délinkées)
+    - Performance (Sell-out / Loading)
+    - Prime (Prime période / Prime validée)
+    """
+    from datetime import date as _date
+    from app.models.pos_performance import POSPerformance
+    from app.models.partner import PartnerSalesTarget
     
     # Récupérer tous les DSM du partenaire avec leurs statistiques de base
-    # Utilisation d'une seule requête avec jointures pour optimiser les performances
     dsm_stats = (
         db.query(
             DSM.id,
@@ -44,8 +56,10 @@ def dsm_dashboard(partner_id: int = Depends(get_partner_context),
             DSM.zone,
             func.count(POS.id).label('nb_pos_crees'),
             func.sum(case((POS.status == StatutPos.ACTIF, 1), else_=0)).label('nb_pos_actifs'),
+            func.sum(case((POS.type_pos == TypePos.NOUVEAU, 1), else_=0)).label('nb_pos_nouveaux'),
+            func.sum(case((POS.type_pos == TypePos.RECONDUIT, 1), else_=0)).label('nb_pos_reconduits'),
             func.sum(case((POS.holder_user_id.isnot(None), 1), else_=0)).label('nb_pos_linkes'),
-            func.sum(case((POS.holder_user_id.is_(None), 1), else_=0)).label('nb_pos_delinkes')
+            func.sum(case((POS.holder_user_id.is_(None), 1), else_=0)).label('nb_pos_delinkes'),
         )
         .outerjoin(POS, (POS.partner_id == partner_id) & (POS.dsm_id == DSM.id))
         .filter(DSM.partner_id == partner_id)
@@ -64,8 +78,15 @@ def dsm_dashboard(partner_id: int = Depends(get_partner_context),
                 "total_loading": 0,
                 "total_sell_out": 0,
                 "total_recettes": 0,
-                "total_requetes": 0
-            }
+                "total_requetes": 0,
+            },
+            "stocks_initiaux": {"creation": 0, "reconduction": 0},
+            "activite_mensuelle": {"creation": 0, "redeploiement": 0},
+            "stocks_finaux": {"creation": 0, "reconduction": 0},
+            "requetes": {"traitees": 0, "non_traitees": 0, "en_cours": 0},
+            "sim": {"linkées": 0, "delinkées": 0},
+            "performance": {"sell_out": 0, "loading": 0},
+            "prime": {"periode": 0, "validee": 0},
         }
     
     dsm_data = []
@@ -75,38 +96,35 @@ def dsm_dashboard(partner_id: int = Depends(get_partner_context),
     total_sell_out = 0
     total_recettes = 0
     total_requetes = 0
+
+    # Données globales
+    global_stock_creation = 0
+    global_stock_reconduction = 0
+    global_creation_mensuelle = 0
+    global_redeploiement_mensuel = 0
+    global_requetes_traitees = 0
+    global_requetes_non_traitees = 0
+    global_sim_linkées = 0
+    global_sim_delinkées = 0
+    global_primes_periode = 0
+    global_primes_validees = 0
     
-    # Statistiques globales partenaire (une seule requête pour éviter N+1)
-    global_loading = db.query(func.count(SIM.id)).join(POS).filter(
-        POS.partner_id == partner_id,
-        SIM.status == StatutSim.EN_STOCK
-    ).scalar() or 0
-    
-    global_sell_out = db.query(func.count(SIMMovement.id)).join(SIM, SIMMovement.sim_id == SIM.id).join(
-        POS, SIM.pos_id == POS.id
-    ).filter(
-        POS.partner_id == partner_id,
-        SIMMovement.movement_type.in_(["VENTE", "ACTIVATION"])
-    ).scalar() or 0
-    
-    global_recettes = db.query(func.coalesce(func.sum(Prime.montant), 0)).join(POS).filter(
-        POS.partner_id == partner_id,
-        Prime.status.in_([StatutPrime.VALIDEE, StatutPrime.PAYEE])
-    ).scalar() or 0
-    
-    global_requetes = db.query(func.count(Requete.id)).filter(
-        Requete.partner_id == partner_id,
-        Requete.closed_at.is_(None)
-    ).scalar() or 0
-    
-    for dsm_id, matricule, full_name, zone, nb_pos_crees, nb_pos_actifs, nb_pos_linkes, nb_pos_delinkes in dsm_stats:
-        # Calculer les statistiques spécifiques par DSM (optimisé)
+    for dsm_id, matricule, full_name, zone, nb_pos_crees, nb_pos_actifs, nb_pos_nouveaux, nb_pos_reconduits, nb_pos_linkes, nb_pos_delinkes in dsm_stats:
+        nb_pos_crees = int(nb_pos_crees or 0)
+        nb_pos_actifs = int(nb_pos_actifs or 0)
+        nb_pos_nouveaux = int(nb_pos_nouveaux or 0)
+        nb_pos_reconduits = int(nb_pos_reconduits or 0)
+        nb_pos_linkes = int(nb_pos_linkes or 0)
+        nb_pos_delinkes = int(nb_pos_delinkes or 0)
+
+        # Loading = SIM en stock pour ce DSM
         dsm_loading = db.query(func.count(SIM.id)).join(POS).filter(
             POS.partner_id == partner_id,
             POS.dsm_id == dsm_id,
             SIM.status == StatutSim.EN_STOCK
         ).scalar() or 0
         
+        # Sell-out = mouvements VENTE/ACTIVATION
         dsm_sell_out = db.query(func.count(SIMMovement.id)).join(SIM, SIMMovement.sim_id == SIM.id).join(
             POS, SIM.pos_id == POS.id
         ).filter(
@@ -115,48 +133,99 @@ def dsm_dashboard(partner_id: int = Depends(get_partner_context),
             SIMMovement.movement_type.in_(["VENTE", "ACTIVATION"])
         ).scalar() or 0
         
+        # Recettes = primes validées/payées
         dsm_recettes = db.query(func.coalesce(func.sum(Prime.montant), 0)).join(POS).filter(
             POS.partner_id == partner_id,
             POS.dsm_id == dsm_id,
             Prime.status.in_([StatutPrime.VALIDEE, StatutPrime.PAYEE])
         ).scalar() or 0
         
-        # Requêtes spécifiques à ce DSM
-        dsm_requetes = db.query(func.count(Requete.id)).filter(
+        # Requêtes du DSM
+        dsm_requetes_total = db.query(func.count(Requete.id)).filter(
             Requete.partner_id == partner_id,
             Requete.dsm_id == dsm_id,
-            Requete.closed_at.is_(None)
         ).scalar() or 0
+        dsm_requetes_non_traitees = db.query(func.count(Requete.id)).filter(
+            Requete.partner_id == partner_id,
+            Requete.dsm_id == dsm_id,
+            Requete.closed_at.is_(None),
+        ).scalar() or 0
+        dsm_requetes_traitees = dsm_requetes_total - dsm_requetes_non_traitees
+
+        # SIM linkées / délinkées pour ce DSM
+        dsm_sim_linkées = db.query(func.count(SIM.id)).join(POS).filter(
+            POS.partner_id == partner_id,
+            POS.dsm_id == dsm_id,
+            POS.holder_user_id.isnot(None),
+        ).scalar() or 0
+        dsm_sim_delinkées = db.query(func.count(SIM.id)).join(POS).filter(
+            POS.partner_id == partner_id,
+            POS.dsm_id == dsm_id,
+            POS.holder_user_id.is_(None),
+        ).scalar() or 0
+
+        # Primes pour ce DSM
+        dsm_primes_periode = db.query(func.coalesce(func.sum(Prime.montant), 0)).join(POS).filter(
+            POS.partner_id == partner_id,
+            POS.dsm_id == dsm_id,
+        ).scalar() or 0
+        dsm_primes_validees = db.query(func.coalesce(func.sum(Prime.montant), 0)).join(POS).filter(
+            POS.partner_id == partner_id,
+            POS.dsm_id == dsm_id,
+            Prime.status.in_([StatutPrime.VALIDEE, StatutPrime.PAYEE]),
+        ).scalar() or 0
+
+        # Objectifs et progression
+        progression = (nb_pos_actifs / nb_pos_crees * 100) if nb_pos_crees > 0 else 0
         
         dsm_info = {
             "id": dsm_id,
             "matricule": matricule,
             "full_name": full_name,
             "zone": zone,
-            "responsable": None,  # Peut être ajouté si le modèle le supporte
-            "contact": None,      # Peut être ajouté si le modèle le supporte
             "micro_zone": zone,
-            "nb_pos_crees": int(nb_pos_crees or 0),
-            "nb_pos_actifs": int(nb_pos_actifs or 0),
-            "nb_pos_linkes": int(nb_pos_linkes or 0),
-            "nb_pos_delinkes": int(nb_pos_delinkes or 0),
+            "nb_pos_crees": nb_pos_crees,
+            "nb_pos_actifs": nb_pos_actifs,
+            "nb_pos_nouveaux": nb_pos_nouveaux,
+            "nb_pos_reconduits": nb_pos_reconduits,
+            "nb_pos_linkes": nb_pos_linkes,
+            "nb_pos_delinkes": nb_pos_delinkes,
             "loading": dsm_loading,
             "sell_out": dsm_sell_out,
             "recettes": float(dsm_recettes),
-            "requetes": dsm_requetes,  # Requêtes spécifiques à ce DSM
-            "progression": None  # Sera calculé à partir des objectifs si disponibles
+            "requetes_total": dsm_requetes_total,
+            "requetes_traitees": dsm_requetes_traitees,
+            "requetes_non_traitees": dsm_requetes_non_traitees,
+            "sim_linkées": dsm_sim_linkées,
+            "sim_delinkées": dsm_sim_delinkées,
+            "primes_periode": float(dsm_primes_periode),
+            "primes_validees": float(dsm_primes_validees),
+            "progression": round(progression, 1),
         }
         
         dsm_data.append(dsm_info)
         
-        # Accumuler les totaux globaux
-        total_pos_crees += int(nb_pos_crees or 0)
-        total_pos_actifs += int(nb_pos_actifs or 0)
+        total_pos_crees += nb_pos_crees
+        total_pos_actifs += nb_pos_actifs
         total_loading += dsm_loading
         total_sell_out += dsm_sell_out
         total_recettes += float(dsm_recettes)
-        total_requetes += dsm_requetes
-    
+        total_requetes += dsm_requetes_total
+        global_stock_creation += nb_pos_nouveaux
+        global_stock_reconduction += nb_pos_reconduits
+        global_creation_mensuelle += nb_pos_nouveaux
+        global_redeploiement_mensuel += nb_pos_reconduits
+        global_requetes_traitees += dsm_requetes_traitees
+        global_requetes_non_traitees += dsm_requetes_non_traitees
+        global_sim_linkées += dsm_sim_linkées
+        global_sim_delinkées += dsm_sim_delinkées
+        global_primes_periode += float(dsm_primes_periode)
+        global_primes_validees += float(dsm_primes_validees)
+
+    # Stocks finaux
+    stock_final_creation = max(0, global_stock_creation - global_creation_mensuelle)
+    stock_final_reconduction = max(0, global_stock_reconduction - global_redeploiement_mensuel)
+
     return {
         "partner_id": partner_id,
         "total_dsm": len(dsm_stats),
@@ -167,8 +236,37 @@ def dsm_dashboard(partner_id: int = Depends(get_partner_context),
             "total_loading": total_loading,
             "total_sell_out": total_sell_out,
             "total_recettes": total_recettes,
-            "total_requetes": total_requetes
-        }
+            "total_requetes": total_requetes,
+        },
+        "stocks_initiaux": {
+            "creation": global_stock_creation,
+            "reconduction": global_stock_reconduction,
+        },
+        "activite_mensuelle": {
+            "creation": global_creation_mensuelle,
+            "redeploiement": global_redeploiement_mensuel,
+        },
+        "stocks_finaux": {
+            "creation": stock_final_creation,
+            "reconduction": stock_final_reconduction,
+        },
+        "requetes": {
+            "traitees": global_requetes_traitees,
+            "non_traitees": global_requetes_non_traitees,
+            "en_cours": global_requetes_non_traitees,
+        },
+        "sim": {
+            "linkées": global_sim_linkées,
+            "delinkées": global_sim_delinkées,
+        },
+        "performance": {
+            "sell_out": total_sell_out,
+            "loading": total_loading,
+        },
+        "prime": {
+            "periode": global_primes_periode,
+            "validee": global_primes_validees,
+        },
     }
 
 

@@ -1,5 +1,5 @@
 """Schemas Pydantic pour les objectifs DSM et les grilles de primes."""
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pydantic import BaseModel, ConfigDict
 
@@ -22,12 +22,13 @@ class DSMObjectiveOut(BaseModel):
     month: date
     creation_objective: int
     revenue_objective: Decimal
-    created_at: date | None = None
+    created_at: datetime | None = None
 
 
 class DSMObjectiveUpdateRequest(BaseModel):
     creation_objective: int | None = None
     revenue_objective: Decimal | None = None
+    reason: str | None = None  # Motif de la modification (traçabilité)
 
 
 class DSMObjectiveSummaryItem(BaseModel):
@@ -84,7 +85,7 @@ class PrimeGridOut(BaseModel):
     grid_type: str
     is_active: bool
     thresholds: list[PrimeGridThresholdOut] = []
-    created_at: date | None = None
+    created_at: datetime | None = None
 
 
 # --- Extension DSMCommission ---

@@ -22,7 +22,9 @@ const DSMSummaryCard = ({ data }) => {
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-slate-900">Performances par DSM</h2>
-        <p className="text-sm text-slate-500">Analyse détaillée des performances par DSM (objectifs, réalisations, loading, sell-out, recettes).</p>
+        <p className="text-sm text-slate-500">
+          Loading = montant vendu par les POS • Sell-out = montant doté par le DSM aux POS • Recettes = chiffre d'affaires des POS.
+        </p>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-slate-200">
@@ -57,8 +59,8 @@ const DSMSummaryCard = ({ data }) => {
                   <td className="px-4 py-3">{formatValue(row.realisation_creation)}</td>
                   <td className="px-4 py-3">{formatValue(row.objectif_redeploiement)}</td>
                   <td className="px-4 py-3">{formatValue(row.realisation_redeploiement)}</td>
-                  <td className="px-4 py-3">{formatValue(row.loading)}</td>
-                  <td className="px-4 py-3">{formatValue(row.sell_out)}</td>
+                  <td className="px-4 py-3">{formatCurrency(row.loading)}</td>
+                  <td className="px-4 py-3">{formatCurrency(row.sell_out)}</td>
                   <td className="px-4 py-3">
                     {row.recettes != null ? formatCurrency(row.recettes) : (
                       <span className="text-amber-600 italic">Donnée non disponible</span>
@@ -72,9 +74,10 @@ const DSMSummaryCard = ({ data }) => {
         </table>
       </div>
       
-      <div className="mt-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
-        <strong>Note :</strong> Les recettes de vente par DSM sont actuellement non disponibles. 
-        Cette donnée devra être alimentée via import/API futur.
+      <div className="mt-4 rounded-lg bg-sky-50 p-3 text-xs text-sky-800">
+        <strong>Montants en FCFA :</strong> le loading correspond au montant vendu par les POS,
+        le sell-out au montant que le DSM a donné aux POS, et les recettes au chiffre d'affaires
+        réalisé par les POS sur la période.
       </div>
     </section>
   );

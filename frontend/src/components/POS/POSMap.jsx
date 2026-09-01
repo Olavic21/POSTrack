@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Link } from 'react-router-dom';
@@ -28,8 +28,15 @@ const STATUS_STYLE = {
   CLOTURE: { color: '#dc2626', fillColor: '#dc2626', label: 'Clôturé' },
 };
 
+// Délai (ms) avant fermeture du popup après sortie du curseur : laisse à
+// l'utilisateur le temps de déplacer la souris dans le menu et de cliquer
+// sur les liens (ex. « Voir les détails »).
+const POPUP_CLOSE_DELAY = 1500;
+
 export default function POSMap({ pos = [], selectedId = null, onSelect = () => {}, partnerId, dsmId }) {
-  const [hover, setHover] = useState(null);
+  const markerRefs = useRef({});
+  const closeTimers = useRef({});
+  const pinnedIdRef = useRef(null);
 
   // Normalisation des POS avec coordonnées valides
   const validPos = useMemo(() => {
@@ -75,6 +82,40 @@ export default function POSMap({ pos = [], selectedId = null, onSelect = () => {
 
   const zoomLevel = validPos.length > 0 ? 12 : DEFAULT_ZOOM;
 
+  // --- Gestion du popup ---------------------------------------------------
+  // Survol d'un marqueur  -> ouverture immédiate.
+  // Sortie du marqueur    -> fermeture différée (POPUP_CLOSE_DELAY).
+  // Survol du popup       -> fermeture annulée (on peut cliquer dedans).
+  // Clic sur le marqueur  -> popup « épinglé » (pas de fermeture auto).
+  const openPopup = (id) => {
+    window.clearTimeout(closeTimers.current[id]);
+    markerRefs.current[id]?.openPopup();
+  };
+
+  const scheduleClose = (id) => {
+    if (pinnedIdRef.current === id) return;
+    window.clearTimeout(closeTimers.current[id]);
+    closeTimers.current[id] = window.setTimeout(() => {
+      markerRefs.current[id]?.closePopup();
+    }, POPUP_CLOSE_DELAY);
+  };
+
+  const cancelClose = (id) => {
+    window.clearTimeout(closeTimers.current[id]);
+  };
+
+  const pinPopup = (id) => {
+    pinnedIdRef.current = id;
+    cancelClose(id);
+    openPopup(id);
+  };
+
+  // Ouvre (et épingle) le popup du POS sélectionné depuis la table.
+  useEffect(() => {
+    if (selectedId != null) pinPopup(selectedId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
   return (
     <div className="relative h-[320px] w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm sm:h-[420px] lg:h-[520px]">
       <MapContainer
@@ -94,21 +135,28 @@ export default function POSMap({ pos = [], selectedId = null, onSelect = () => {
         {validPos.map((p) => {
           const catStyle = CATEGORY_STYLE[p.type_pos] || CATEGORY_STYLE.NOUVEAU;
           const statStyle = STATUS_STYLE[p.statut] || STATUS_STYLE.ACTIF;
-          const selected = p.id === selectedId || p.id === hover?.id;
 
           return (
             <div key={p.id}>
               <Marker
+                ref={(ref) => { if (ref) markerRefs.current[p.id] = ref; }}
                 position={[p.lat, p.lng]}
                 eventHandlers={{
-                  click: () => onSelect(p),
-                  mouseover: () => setHover(p),
-                  mouseout: () => setHover(null),
+                  click: () => { onSelect(p); pinPopup(p.id); },
+                  mouseover: () => openPopup(p.id),
+                  mouseout: () => scheduleClose(p.id),
                 }}
                 title={`${p.code_pos} - ${p.nom}`}
               >
-                {selected && (
-                  <Popup className="z-[1000]">
+                <Popup
+                  className="z-[1000]"
+                  keepInView
+                  eventHandlers={{
+                    mouseover: () => cancelClose(p.id),
+                    mouseout: () => scheduleClose(p.id),
+                    remove: () => { if (pinnedIdRef.current === p.id) pinnedIdRef.current = null; },
+                  }}
+                >
                     <div className="min-w-[200px] p-2 text-left">
                       <div className="flex items-center space-x-2 mb-2">
                         <div className="h-3 w-3 rounded-full" style={{ background: catStyle.fillColor }} />
@@ -150,7 +198,6 @@ export default function POSMap({ pos = [], selectedId = null, onSelect = () => {
                       </div>
                     </div>
                   </Popup>
-                )}
               </Marker>
             </div>
           );

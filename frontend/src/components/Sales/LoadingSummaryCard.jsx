@@ -5,6 +5,11 @@ const formatValue = (value) => {
   return new Intl.NumberFormat('fr-FR').format(Number(value));
 };
 
+const formatCurrency = (value) => {
+  if (value === null || value === undefined) return 'Non renseigné';
+  return `${new Intl.NumberFormat('fr-FR').format(Number(value))} FCFA`;
+};
+
 const formatPct = (value) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return 'Non renseigné';
   return `${Math.min(100, Math.max(0, Number(value))).toFixed(1)} %`;
@@ -26,7 +31,7 @@ const LoadingSummaryCard = ({ data, onPeriodChange }) => {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Loading partenaire</h2>
-          <p className="text-sm text-slate-500">Le loading représente ce que le marché a consommé.</p>
+          <p className="text-sm text-slate-500">Le loading correspond au montant vendu par les POS (FCFA).</p>
         </div>
         <form onSubmit={applyFilter} className="flex flex-wrap items-end gap-2 text-sm">
           <label className="space-y-1">
@@ -42,8 +47,8 @@ const LoadingSummaryCard = ({ data, onPeriodChange }) => {
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <Metric label="Réalisation" value={data?.loading} />
-        <Metric label="Objectif" value={data?.objectif} />
+        <Metric label="Réalisation (FCFA)" value={data?.loading} money />
+        <Metric label="Objectif (FCFA)" value={data?.objectif} money />
         <Metric label="Progression" value={formatPct(data?.progression)} raw />
       </div>
 
@@ -60,8 +65,8 @@ const LoadingSummaryCard = ({ data, onPeriodChange }) => {
           ) : rows.map((row) => (
             <div key={row.dsm_id} className="grid grid-cols-4 gap-2 px-4 py-3 text-sm">
               <div className="font-medium text-slate-900">{row.dsm_name || row.dsm_code || `DSM #${row.dsm_id}`}</div>
-              <div>{formatValue(row.loading)}</div>
-              <div>{formatValue(row.objectif)}</div>
+              <div>{formatCurrency(row.loading)}</div>
+              <div>{formatCurrency(row.objectif)}</div>
               <div>{formatPct(row.progression)}</div>
             </div>
           ))}
@@ -75,11 +80,11 @@ const LoadingSummaryCard = ({ data, onPeriodChange }) => {
   );
 };
 
-function Metric({ label, value, raw = false }) {
+function Metric({ label, value, raw = false, money = false }) {
   return (
     <div className="rounded-lg bg-slate-50 p-4">
       <div className="text-sm text-slate-500">{label}</div>
-      <div className="mt-1 text-2xl font-bold text-slate-900">{raw ? value : formatValue(value)}</div>
+      <div className="mt-1 text-2xl font-bold text-slate-900">{raw ? value : money ? formatCurrency(value) : formatValue(value)}</div>
     </div>
   );
 }

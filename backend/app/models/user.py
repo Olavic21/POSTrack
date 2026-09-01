@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import Base
+from app.security.password import hash_password, verify_password
 from app.security.permissions import Role
 
 
@@ -17,6 +18,14 @@ class User(Base):
     full_name = Column(String(150), nullable=True)
     role = Column(SAEnum(Role), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+
+    def set_password(self, password: str) -> None:
+        """Hash and set the password (bcrypt)."""
+        self.hashed_password = hash_password(password)
+
+    def check_password(self, password: str) -> bool:
+        """Verify a plaintext password against the stored hash."""
+        return verify_password(password, self.hashed_password)
 
     # Un OPERATIONNEL est rattaché à un seul partenaire via partner_id.
     partner_id = Column(Integer, ForeignKey("partners.id"), nullable=True)

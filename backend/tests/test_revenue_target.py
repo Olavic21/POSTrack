@@ -16,30 +16,35 @@ from app.services.analytics_service import (
 @pytest.fixture
 def test_partner(db: Session):
     """Crée un partenaire de test."""
-    partner = Partner(
-        code="TEST_PARTNER",
-        name="Partenaire Test Recettes",
-        is_active=True,
-    )
-    db.add(partner)
-    db.commit()
-    db.refresh(partner)
+    partner = db.query(Partner).filter(Partner.code == "TEST_PARTNER").first()
+    if not partner:
+        partner = Partner(
+            code="TEST_PARTNER",
+            name="Partenaire Test Recettes",
+            is_active=True,
+        )
+        db.add(partner)
+        db.commit()
+        db.refresh(partner)
     return partner
 
 
 @pytest.fixture
 def test_admin_user(db: Session):
     """Crée un utilisateur admin pour les tests."""
-    user = User(
-        email="admin@test.com",
-        full_name="Admin Test",
-        role=Role.ADMIN,
-        is_active=True,
-    )
-    user.set_password("password123")
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    user = db.query(User).filter(User.email == "admin@test.com").first()
+    if not user:
+        user = User(
+            username="admin_test_rev",
+            email="admin@test.com",
+            full_name="Admin Test",
+            role=Role.ADMIN,
+            is_active=True,
+        )
+        user.set_password("password123")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
     return user
 
 
