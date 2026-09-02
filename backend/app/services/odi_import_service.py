@@ -334,6 +334,14 @@ def import_stock_file(db: Session, *, partner_id: int, file_bytes: bytes) -> dic
 
     db.flush()
 
+    # Cache local des POS crees pendant ce run : le fichier STOCK liste parfois
+    # le meme code_pos sous plusieurs DSM parents (cross-listing). La session est
+    # en autoflush=False, donc un INSERT en instance n'est pas visible d'une
+    # requete ulterieure -> risque de violation de la contrainte UNIQUE
+    # (partner_id, code_pos) au commit. Le cache garantit qu'un code est cree une
+    # seule fois par run ; les occurrences suivantes le mettent a jour.
+    pos_cache: dict[str, POS] = {}
+
     # Level 6 : POS
     level6 = df[df["Level"] == 6]
 
@@ -355,19 +363,34 @@ def import_stock_file(db: Session, *, partner_id: int, file_bytes: bytes) -> dic
         # Trouver le DSM parent
         dsm_obj = dsm_map.get(parent_dsm)
         if not dsm_obj:
-            errors.append({
-                "entity": "POS",
-                "code_pos": pos_code,
-                "error": f"DSM parent '{parent_dsm}' introuvable.",
-            })
-            continue
+            # DSM parent absent du niveau 5 (donnee source incomplete, ex.
+            # DSM4 pour la zone LT3) : on le cree en placeholder afin de ne
+            # pas perdre les POS associees. Re-lanceable : un eventuel DSM
+            # deja present en base est reutilise.
+            dsm_obj = db.query(DSM).filter(
+                DSM.partner_id == partner_id, DSM.matricule == parent_dsm
+            ).first()
+            if not dsm_obj:
+                dsm_obj = DSM(
+                    partner_id=partner_id,
+                    matricule=parent_dsm,
+                    full_name=parent_dsm,  # nom par defaut = matricule
+                )
+                db.add(dsm_obj)
+                db.flush()  # recuperer l'ID du placeholder
+            dsm_map[parent_dsm] = dsm_obj
 
         try:
-            existing = db.query(POS).filter(
-                POS.partner_id == partner_id, POS.code_pos == pos_code
-            ).first()
+            # 1er regard : cache local du run (gere le cross-listing memoire) ;
+            # 2e regard : base de donnees (gere la relance sur donnees preexistantes).
+            existing = pos_cache.get(pos_code)
+            if existing is None:
+                existing = db.query(POS).filter(
+                    POS.partner_id == partner_id, POS.code_pos == pos_code
+                ).first()
 
             if existing:
+                pos_cache[pos_code] = existing
                 if org_id:
                     existing.org_id = org_id
                 if color_code:
@@ -397,6 +420,8 @@ def import_stock_file(db: Session, *, partner_id: int, file_bytes: bytes) -> dic
                     date_expiration=today.replace(year=today.year + 1),
                 )
                 db.add(pos)
+                db.flush()  # rend le POS visible aux requetes suivantes du run
+                pos_cache[pos_code] = pos
                 created_pos += 1
         except Exception as exc:
             errors.append({"entity": "POS", "code_pos": pos_code, "error": str(exc)})
