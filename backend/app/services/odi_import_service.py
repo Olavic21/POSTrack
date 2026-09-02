@@ -119,9 +119,13 @@ def import_zone_file(db: Session, *, partner_id: int, file_bytes: bytes) -> dict
     if not partner:
         raise ValidationErrorApp("Partenaire introuvable.")
 
-    # Filtrer les lignes de donnees (exclure les lignes RECAP/summary en fin)
+        # Filtrer les lignes de donnees (exclure les lignes RECAP/summary en fin)
     df = df[~df["BTS CODE NAME"].astype(str).str.contains("RECAP|COVERAGE|No\\. OF", case=False, na=False)]
     df = df[~df["SN"].astype(str).str.contains("RECAP|No", case=False, na=False)]
+    # Ligne de synthese (ex. la derniere ligne "19 BTS / 18.3 km2") : la colonne
+    # "BTS CODE NAME" contient une valeur numerique (18.3) au lieu d'un vrai code
+    # alphanumerique (DLAxxx) -> on l'ecarte pour ne pas creer de BTS vide.
+    df = df[~pd.to_numeric(df["BTS CODE NAME"], errors="coerce").notna()]
 
     created_bts = 0
     updated_bts = 0
