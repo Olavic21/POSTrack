@@ -1,14 +1,19 @@
 """Coordonnees GPS POS en Float (decimales WGS84).
 
-Les colonnes pos.latitude / pos.longitude etaient declarees Integer :
-toute coordonnee saisie (ex. 4.0512) etait tronquee a l'unite (~110 km
-d'erreur). Passage en Float pour stocker de vraies coordonnees GPS.
+Ajoute pos.latitude / pos.longitude en Float pour stocker de vraies
+coordonnees GPS : toute coordonnee saisie (ex. 4.0512) etait tronquee
+a l'unite (~110 km d'erreur) lorsqu'elle passait par un Integer.
+
+Note historique : la version initiale de cette migration convertissait
+des colonnes Integer supposees pre-existantes, mais aucune migration
+intermediaire ne creait ces colonnes -- la chaine `alembic upgrade
+head` echouait donc depuis une base vide avec
+`KeyError: 'latitude'`. La migration cree ainsi les colonnes,
+conformement au modele app.models.pos.POS.
 
 La revision depend des deux tetes pre-existantes (c1d2e3f4a5b6 -> ...
 -> e5f6a7b8c9d0 ET la branche d3e4f5a6b7c8) afin de reunifier la chaine
 sous une seule tete : `alembic upgrade head` redevient utilisable.
-
-Batch mode requis pour ALTER COLUMN sur SQLite.
 
 Revision ID: b4d6f8a0c2e4
 Revises: ('e5f6a7b8c9d0', 'd3e4f5a6b7c8')
@@ -27,37 +32,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    with op.batch_alter_table('pos') as batch_op:
-        batch_op.alter_column(
-            'latitude',
-            existing_type=sa.Integer(),
-            type_=sa.Float(),
-            existing_nullable=True,
-            postgresql_using='latitude::double precision',
-        )
-        batch_op.alter_column(
-            'longitude',
-            existing_type=sa.Integer(),
-            type_=sa.Float(),
-            existing_nullable=True,
-            postgresql_using='longitude::double precision',
-        )
+    op.add_column('pos', sa.Column('latitude', sa.Float(), nullable=True))
+    op.add_column('pos', sa.Column('longitude', sa.Float(), nullable=True))
 
 
 def downgrade() -> None:
-    # Le downgrade tronque les decimales (comportement historique).
-    with op.batch_alter_table('pos') as batch_op:
-        batch_op.alter_column(
-            'longitude',
-            existing_type=sa.Float(),
-            type_=sa.Integer(),
-            existing_nullable=True,
-            postgresql_using='longitude::integer',
-        )
-        batch_op.alter_column(
-            'latitude',
-            existing_type=sa.Float(),
-            type_=sa.Integer(),
-            existing_nullable=True,
-            postgresql_using='latitude::integer',
-        )
+    # Le downgrade supprime les colonnes GPS.
+    op.drop_column('pos', 'longitude')
+    op.drop_column('pos', 'latitude')

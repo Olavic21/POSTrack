@@ -19,10 +19,12 @@ from app.services.requete_service import (
 
 @pytest.fixture
 def test_partner(db: Session):
-    """Crée un partenaire de test."""
+    """Crée un partenaire de test (code unique)."""
+    import uuid
+    suffix = uuid.uuid4().hex[:8]
     partner = Partner(
-        code="TEST_PARTNER_REQ",
-        name="Partenaire Test Requêtes",
+        code=f"TEST_PARTNER_REQ_{suffix}",
+        name=f"Partenaire Test Requêtes {suffix}",
         is_active=True,
     )
     db.add(partner)
@@ -34,9 +36,11 @@ def test_partner(db: Session):
 @pytest.fixture
 def test_dsm(db: Session, test_partner):
     """Crée un DSM de test."""
+    import uuid
+    suffix = uuid.uuid4().hex[:6]
     dsm = DSM(
         partner_id=test_partner.id,
-        matricule="DSM_REQ_001",
+        matricule=f"DSM_REQ_{suffix}",
         full_name="Test DSM Requêtes",
     )
     db.add(dsm)
@@ -48,13 +52,18 @@ def test_dsm(db: Session, test_partner):
 @pytest.fixture
 def test_user(db: Session):
     """Crée un utilisateur de test."""
+    import uuid
+    from app.security.password import hash_password
+
+    suffix = uuid.uuid4().hex[:8]
     user = User(
-        email="user@test.com",
+        username=f"user_{suffix}",
+        email=f"user_{suffix}@test.com",
+        hashed_password=hash_password("password123"),
         full_name="Test User",
         role=Role.OPERATIONNEL,
         is_active=True,
     )
-    user.set_password("password123")
     db.add(user)
     db.commit()
     db.refresh(user)

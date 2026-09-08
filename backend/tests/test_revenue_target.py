@@ -1,5 +1,6 @@
 """Tests pour les nouvelles fonctionnalités de recettes et objectifs de vente."""
 import pytest
+import uuid
 from datetime import date
 from decimal import Decimal
 from sqlalchemy.orm import Session
@@ -15,10 +16,11 @@ from app.services.analytics_service import (
 
 @pytest.fixture
 def test_partner(db: Session):
-    """Crée un partenaire de test."""
+    """Crée un partenaire de test (code unique pour éviter les collisions inter-tests)."""
+    suffix = uuid.uuid4().hex[:8]
     partner = Partner(
-        code="TEST_PARTNER",
-        name="Partenaire Test Recettes",
+        code=f"TEST_PARTNER_{suffix}",
+        name=f"Partenaire Test Recettes {suffix}",
         is_active=True,
     )
     db.add(partner)
@@ -30,13 +32,17 @@ def test_partner(db: Session):
 @pytest.fixture
 def test_admin_user(db: Session):
     """Crée un utilisateur admin pour les tests."""
+    from app.security.password import hash_password
+
+    suffix = uuid.uuid4().hex[:8]
     user = User(
-        email="admin@test.com",
+        email=f"admin_{suffix}@test.com",
+        username=f"admin_{suffix}",
+        hashed_password=hash_password("password123"),
         full_name="Admin Test",
         role=Role.ADMIN,
         is_active=True,
     )
-    user.set_password("password123")
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -136,11 +142,13 @@ def test_update_sales_target_revenue(db: Session, test_partner):
 def test_dsm_summary_structure(db: Session, test_partner):
     """Test que le résumé DSM a la structure correcte avec recettes."""
     from app.models.dsm import DSM
+    import uuid
 
     # Créer un DSM de test
+    suffix = uuid.uuid4().hex[:6]
     dsm = DSM(
         partner_id=test_partner.id,
-        matricule="DSM001",
+        matricule=f"DSM001_{suffix}",
         full_name="Test DSM",
     )
     db.add(dsm)
@@ -174,11 +182,13 @@ def test_dsm_summary_structure(db: Session, test_partner):
 def test_dsm_summary_revenues_missing_data(db: Session, test_partner):
     """Test que les recettes DSM sont marquées comme manquantes."""
     from app.models.dsm import DSM
+    import uuid
 
     # Créer un DSM de test
+    suffix = uuid.uuid4().hex[:6]
     dsm = DSM(
         partner_id=test_partner.id,
-        matricule="DSM002",
+        matricule=f"DSM002_{suffix}",
         full_name="Test DSM 2",
     )
     db.add(dsm)
