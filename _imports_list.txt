@@ -1,0 +1,6 @@
+﻿C:\Users\HP\Desktop\POSTrack\database\imports\import_pos.py | 7457 bytes
+C:\Users\HP\Desktop\POSTrack\database\imports\MASTER_COLOR\MASTER_COLOR_JUILLET_2026.xlsx | 11536 bytes
+C:\Users\HP\Desktop\POSTrack\database\imports\MASTER_COLOR\MASTER_COLOR_JUIN_2026.xlsx | 8931 bytes
+C:\Users\HP\Desktop\POSTrack\database\imports\ODI\STOCK ODI 27 Aug 26.xlsx | 165873 bytes
+C:\Users\HP\Desktop\POSTrack\database\imports\ODI\ZONE ODI.xlsx | 19057 bytes
+C:\Users\HP\Desktop\POSTrack\database\imports\ODI\~$STOCK ODI 27 Aug 26.xlsx | 165 bytes

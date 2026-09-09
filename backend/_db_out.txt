@@ -1,0 +1,79 @@
+﻿=== SCHEMA FK (tables dependant de pos / dsm / partners / bts) ===
+  audit_logs.period_id -> prime_periods.id
+  audit_logs.dsm_id -> dsm.id
+  audit_logs.partner_id -> partners.id
+  audit_logs.user_id -> users.id
+
+  bts.partner_id -> partners.id
+
+  bts_releves.bts_id -> bts.id
+
+  dsm.partner_id -> partners.id
+
+  dsm_commissions.validated_by -> users.id
+  dsm_commissions.prime_period_id -> prime_periods.id
+  dsm_commissions.dsm_id -> dsm.id
+  dsm_commissions.partner_id -> partners.id
+
+  dsm_objectives.prime_period_id -> prime_periods.id
+  dsm_objectives.dsm_id -> dsm.id
+  dsm_objectives.partner_id -> partners.id
+
+  import_batches.imported_by -> users.id
+  import_batches.partner_id -> partners.id
+
+  micro_zones.partner_id -> partners.id
+
+  partner_sales_targets.partner_id -> partners.id
+
+  partners.commercial_user_id -> users.id
+  partners.responsable_user_id -> users.id
+
+  pos.holder_user_id -> users.id
+  pos.dsm_id -> dsm.id
+  pos.partner_id -> partners.id
+
+  pos_performance.pos_id -> pos.id
+  pos_performance.partner_id -> partners.id
+
+  prime_grid_thresholds.grid_id -> prime_grids.id
+
+  prime_grids.partner_id -> partners.id
+
+  prime_periods.partner_id -> partners.id
+
+  primes.validated_by -> users.id
+  primes.demandeur_id -> users.id
+  primes.prime_period_id -> prime_periods.id
+  primes.pos_id -> pos.id
+
+  reconductions.author_id -> users.id
+  reconductions.pos_id -> pos.id
+
+  requete_commentaires.author_id -> users.id
+  requete_commentaires.requete_id -> requetes.id
+
+  requete_entites.requete_id -> requetes.id
+
+  requetes.responsable_id -> users.id
+  requetes.demandeur_id -> users.id
+  requetes.dsm_id -> dsm.id
+  requetes.partner_id -> partners.id
+
+  sim_movements.author_id -> users.id
+  sim_movements.partner_id -> partners.id
+  sim_movements.sim_id -> sims.id
+
+  sims.pos_id -> pos.id
+  sims.partner_id -> partners.id
+
+  user_partners.partner_id -> partners.id
+  user_partners.user_id -> users.id
+
+  user_pos.pos_id -> pos.id
+  user_pos.user_id -> users.id
+
+  users.dsm_id -> dsm.id
+  users.partner_id -> partners.id
+
+=== TABLES CLES : colonnes ===

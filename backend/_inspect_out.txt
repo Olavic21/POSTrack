@@ -1,0 +1,54 @@
+﻿=== MASTER_COLOR JUIN (header=None, 15 premieres lignes) ===
+SHEETS: ['Feuil1']
+Shape: (7, 9)
+L0: ['nan', 'nan', 'nan', 'nan', 'nan', 'nan', 'nan', 'nan', 'nan']
+L1: ['Numeros DSM', 'Noms et Prenoms POS', 'Autres contact', 'Quartiers ', 'Lieu Dit', 'Longitude ', 'Latitude', 'Montant premiere recharges', 'Observations']
+L2: ['622493002', 'ALI', '674135510', 'NEWBELL', 'CASINO', 'nan', 'nan', '10000', 'RAS']
+L3: ['622493002', 'KAMGA', '676845050', 'NEWBELL', 'GANGUE CARREFOUR SENEGALAISE', 'nan', 'nan', '10000', 'RAS']
+L4: ['622493002', 'OLINGA', '691343206', 'NEWBELL', 'GANGUE CARREFOUR SENEGALAISE', 'nan', 'nan', '30000', 'RAS']
+L5: ['622493002', 'ABEL', '656318502', 'NEWBELL', 'DERNIER POTEAU', 'nan', 'nan', '10000', 'RAS']
+L6: ['622493002', 'ETONG', '693387305', 'NEWBELL', 'NKOMONDO MARCHE ┼ÆUF', 'nan', 'nan', '11500', 'RAS']
+
+=== MASTER_COLOR JUILLET (header=None, 15 premieres lignes) ===
+SHEETS: ['Feuil1']
+Shape: (38, 11)
+L0: ['nan', 'nan', 'nan', 'nan', 'nan', 'nan', 'nan', 'nan', 'nan', 'nan', 'nan']
+L1: ['N┬░', 'Numero POS', 'Numeros DSM', 'Noms et Prenoms POS', 'Autres contact', 'Quartiers ', 'Lieu Dit', 'Longitude ', 'Latitude', 'Montant premiere recharges', 'Observations']
+L2: ['1', '622486897', '622095909', 'YOUSSOUF', '656361885', 'NEWBELL', 'MOSQUEE KDD EN ALLANT VERS MON', 'nan', 'nan', '10000', 'RAS']
+L3: ['2', '622486896', '622095909', 'IDELETTE ', '696632492', 'NEWBELL', 'CERCLE MUNICIPAL MONKAM MOSQUE', 'nan', 'nan', '5000', 'RAS']
+L4: ['3', '622486895', '622095909', 'CHRISTOPHE', '698714787', 'NEWBELL', 'SACRE C┼ÆUR SAINTE ANNE ENTREE ', 'nan', 'nan', '5000', 'RAS']
+L5: ['4', '622486894', '622095909', 'HERMANN', '659417897', 'NEWBELL', 'CONGO CONGELCAM', 'nan', 'nan', '20000', 'RAS']
+L6: ['5', '622486907', '622095909', 'EMILIE', '656863400', 'BALI', 'SISCOO COIFFURE', 'nan', 'nan', '5000', 'RAS']
+L7: ['6', '622486901', '622095909', 'ABOU', '680692316', 'NEWBELL', 'SACRE C┼ÆUR SAINTE ANNE ENTREE ', 'nan', 'nan', '5000', 'RAS']
+L8: ['7', '622486906', '622095909', 'ISMAILLE', '693534331', 'NEWBELL', 'FACE ECOLE SOURD MUETTE', 'nan', 'nan', '10000', 'RAS']
+L9: ['8', '622486904', '622095909', 'MERLINE', '675355574', 'NEWBELL', 'GONSOA VERS LES RAIL', 'nan', 'nan', '5000', 'RAS']
+L10: ['9', '622486902', '622095909', 'NONO', '657421147', 'BALI', 'AVANT SAKER VENANT DE KAYO ELI', 'nan', 'nan', '10000', 'RAS']
+L11: ['10', '622486898', '622095909', 'YOLANDE', '697574280', 'CONGO', 'DEVANT ENTREE DES TISSU VERS S', 'nan', 'nan', '10000', 'RAS']
+L12: ['11', '622486899', '622095909', 'LOUIS', '651580915', 'BALI', 'BAR JAMAICA', 'nan', 'nan', '5000', 'RAS']
+L13: ['12', '622484779', '622095909', 'PRISCA', '675206724', 'NEWBELL', 'GONSOA CARREFOUR REMEDE', 'nan', 'nan', '10000', 'RAS']
+L14: ['13', '622484778', '622095909', 'FLORENTINE', '677990756', 'NEWBELL', 'CAMP YABASSI FACE NADEGE VERS ', 'nan', 'nan', '5000', 'RAS']
+
+=== STOCK ODI ===
+Columns: ['Level', 'Organization Name', 'Unnamed: 2', 'Unnamed: 3', 'Unnamed: 4', 'Unnamed: 5', 'Unnamed: 6', 'Parent Organization Name', '                                                Current Balance                                                ', 'Unnamed: 9', 'Unnamed: 10', 'Unnamed: 11']
+Level counts: {6: 3864, 5: 58, 4: 1}
+Level 5 (DSM) count: 58
+DSM row 0: ['5', '620462652', ' DSM69', 'LT4', 'nan', 'nan', 'nan', '"\t620481299 - MASTER_SIM_ZONE_LITTORAL_4', '267121', 'nan', 'nan', 'g']
+DSM row 1: ['5', '620462654', ' DSM71', 'LT4', 'nan', 'nan', 'nan', '"\t620481299 - MASTER_SIM_ZONE_LITTORAL_4', '12234', 'nan', 'nan', 'nan']
+DSM row 2: ['5', '620481300', ' DSM1', 'LT4', 'nan', 'nan', 'nan', '"\t620481299 - MASTER_SIM_ZONE_LITTORAL_4', '183600', 'nan', 'nan', 'nan']
+DSM row 3: ['5', '620481301', ' DSM2', 'LT4', 'nan', 'nan', 'nan', '"\t620481299 - MASTER_SIM_ZONE_LITTORAL_4', '123991', 'nan', 'nan', 'nan']
+DSM row 4: ['5', '620481305', ' DSM6', 'LT4', 'nan', 'nan', 'nan', '"\t620481299 - MASTER_SIM_ZONE_LITTORAL_4', '105863', 'nan', 'nan', 'nan']
+DSM row 5: ['5', '620481306', ' DSM7', 'LT4', 'nan', 'nan', 'nan', '"\t620481299 - MASTER_SIM_ZONE_LITTORAL_4', '936', 'nan', 'nan', 'nan']
+DSM row 6: ['5', '620481307', ' DSM8', 'LT4', 'nan', 'nan', 'nan', '"\t620481299 - MASTER_SIM_ZONE_LITTORAL_4', '106713', 'nan', 'nan', 'nan']
+DSM row 7: ['5', '620481308', ' DSM9', 'LT4', 'nan', 'nan', 'nan', '"\t620481299 - MASTER_SIM_ZONE_LITTORAL_4', '42140', 'nan', 'nan', 'nan']
+Level 6 (POS) count: 3864
+POS row 0: ['6', '620110574', ' POS35', 'DSM57', 'LT4', 'nan', 'nan', '"\t622085010 - DSM57_LT4"', '0', 'nan', 'nan', 'nan']
+POS row 1: ['6', '620113204', ' POS163', 'DSM2', 'LT4', 'nan', 'nan', '"\t620481301 - DSM2_LT4"', '17550', 'nan', 'nan', 'nan']
+POS row 2: ['6', '620113391', ' POS61', 'DSM25', 'LT4', 'nan', 'nan', '"\t620491895 - DSM25_LT4"', '0', 'nan', 'nan', 'nan']
+POS row 3: ['6', '620113418', ' POS62', 'DSM25', 'LT4', 'nan', 'nan', '"\t620491895 - DSM25_LT4"', '150', 'nan', 'nan', 'nan']
+POS row 4: ['6', '620113478', ' POS63', 'DSM25', 'LT4', 'nan', 'nan', '"\t620491895 - DSM25_LT4"', '2400', 'nan', 'nan', 'nan']
+POS row 5: ['6', '620113560', ' POS64', 'DSM25', 'LT4', 'nan', 'nan', '"\t620491895 - DSM25_LT4"', '0', 'nan', 'nan', 'nan']
+POS row 6: ['6', '620114611', ' POS65', 'DSM25', 'LT4', 'nan', 'nan', '"\t620491895 - DSM25_LT4"', '12550', 'nan', 'nan', 'nan']
+POS row 7: ['6', '620115789', ' POS86', 'DSM24', 'LT4', 'nan', 'nan', '"\t620481323 - DSM24_LT4"', '50', 'nan', 'nan', 'nan']
+
+Level5 col Unnamed: 2 uniques: [' DSM69', ' DSM71', ' DSM1', ' DSM2', ' DSM6', ' DSM7', ' DSM8', ' DSM9', ' DSM10', ' DSM12', ' DSM15', ' DSM16', ' DSM17', ' DSM18', ' DSM19', ' DSM20', ' DSM22', ' DSM23', ' DSM24', ' DSM25', ' DSM27', ' DSM29', ' DSM30', ' DSM31', ' DSM32', ' DSM33', ' DSM35', ' DSM36', ' DSM47', ' DSM48']
+Level5 Unnamed: 4 uniques: []
