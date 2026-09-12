@@ -11,6 +11,9 @@ import POSDistributionChart from '../components/Dashboard/POSDistributionChart'
 import SaturationChart from '../components/Dashboard/SaturationChart'
 import PrimeChart from '../components/Dashboard/PrimeChart'
 import SIMStockChart from '../components/Dashboard/SIMStockChart'
+import KpiObjectivesCard from '../components/Dashboard/KpiObjectivesCard'
+import KpiRealisationsCard from '../components/Dashboard/KpiRealisationsCard'
+import PrimeDsmCard from '../components/Dashboard/PrimeDsmCard'
 
 type Stats = {
   partner_name?: string
@@ -54,6 +57,41 @@ type PartnerContext = {
   code?: string
 }
 
+type KpiObjectifs = {
+  sell_out?: number | null
+  loading?: number | null
+  creation_pos?: number | null
+  reconduction_pos?: number | null
+  revenus?: number | null
+}
+
+type KpiRealisations = {
+  partner_id?: number
+  month?: string
+  realisations?: KpiObjectifs
+  taux?: Record<string, number | null>
+  objectifs?: KpiObjectifs
+}
+
+type SimLinkage = {
+  linkees?: { nombre?: number; sell_out?: number; loading?: number }
+  delinkees?: { nombre?: number; sell_out?: number; loading?: number }
+  total?: number
+}
+
+type BtsEtatRow = {
+  id?: number
+  code_bts?: string
+  taux_saturation?: number | null
+  etat?: string
+}
+
+type KpiDsmBothCriteria = {
+  dsm_both_criteria?: number
+  total_dsm?: number
+  details?: { dsm_id: number; matricule?: string; qty_ok: boolean; amt_ok: boolean; both: boolean }[]
+}
+
 const formatInt = (v: number | null | undefined) => {
   if (v === null || v === undefined) return '0'
   return new Intl.NumberFormat('fr-FR').format(v)
@@ -69,6 +107,11 @@ function Dashboard() {
   const [salesSummary, setSalesSummary] = useState<SalesSummary | null>(null)
   const [enrichedPos, setEnrichedPos] = useState<EnrichedPos[]>([])
   const [identity, setIdentity] = useState<Record<string, unknown> | null>(null)
+  const [kpiObj, setKpiObj] = useState<KpiRealisations | null>(null)
+  const [kpiReal, setKpiReal] = useState<KpiRealisations | null>(null)
+  const [kpiBoth, setKpiBoth] = useState<KpiDsmBothCriteria | null>(null)
+  const [simLinkage, setSimLinkage] = useState<SimLinkage | null>(null)
+  const [btsEtat, setBtsEtat] = useState<BtsEtatRow[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -80,16 +123,26 @@ function Dashboard() {
           setSalesSummary(null)
           setEnrichedPos([])
           setIdentity(null)
+          setKpiObj(null)
+          setKpiReal(null)
+          setKpiBoth(null)
+          setSimLinkage(null)
+          setBtsEtat([])
           setLoading(false)
         }
         return
       }
       try {
-        const [statsRes, salesRes, posRes, identityRes] = await Promise.all([
+        const [statsRes, salesRes, posRes, identityRes, kpiObjRes, kpiRealRes, kpiBothRes, simLinkRes, btsEtatRes] = await Promise.all([
           analyticsService.getDashboard(partnerContextId),
           analyticsService.getSalesSummary(partnerContextId),
           posService.getEnriched({ limit: 100 }),
           partenaireService.getIdentity(partnerContextId),
+          analyticsService.getKpiObjectives(partnerContextId),
+          analyticsService.getKpiRealisations(partnerContextId),
+          analyticsService.getKpiDsmBothCriteria(partnerContextId),
+          analyticsService.getSimLinkage(partnerContextId),
+          analyticsService.getBtsEtat(partnerContextId),
         ])
         if (!ignore) {
           setStats(statsRes.data)
@@ -97,6 +150,11 @@ function Dashboard() {
           const posData = posRes.data?.items ?? posRes.data?.data ?? posRes.data?.results ?? posRes.data ?? []
           setEnrichedPos(Array.isArray(posData) ? posData : [])
           setIdentity(identityRes.data?.data ?? identityRes.data ?? null)
+          setKpiObj(kpiObjRes.data ?? null)
+          setKpiReal(kpiRealRes.data ?? null)
+          setKpiBoth(kpiBothRes.data ?? null)
+          setSimLinkage(simLinkRes.data ?? null)
+          setBtsEtat(Array.isArray(btsEtatRes.data) ? btsEtatRes.data : [])
         }
       } catch {
         if (!ignore) {
@@ -104,6 +162,11 @@ function Dashboard() {
           setSalesSummary(null)
           setEnrichedPos([])
           setIdentity(null)
+          setKpiObj(null)
+          setKpiReal(null)
+          setKpiBoth(null)
+          setSimLinkage(null)
+          setBtsEtat([])
         }
       } finally {
         if (!ignore) setLoading(false)
@@ -114,6 +177,18 @@ function Dashboard() {
   }, [partnerContextId])
 
   const simStats = useMemo(() => {
+    // Source de vérité : GET /analytics/sim-linkage (backend).
+    // Fallback local uniquement si l'API n'a pas répondu.
+    if (simLinkage?.linkees || simLinkage?.delinkees) {
+      return {
+        linkedCount: simLinkage.linkees?.nombre ?? 0,
+        linkedSellOut: simLinkage.linkees?.sell_out ?? 0,
+        linkedLoading: simLinkage.linkees?.loading ?? 0,
+        unlinkedCount: simLinkage.delinkees?.nombre ?? 0,
+        unlinkedSellOut: simLinkage.delinkees?.sell_out ?? 0,
+        unlinkedLoading: simLinkage.delinkees?.loading ?? 0,
+      }
+    }
     const linked = enrichedPos.filter((p) => p.linkage_status === 'LINKED')
     const unlinked = enrichedPos.filter((p) => p.linkage_status === 'UNLINKED')
     return {
@@ -124,7 +199,16 @@ function Dashboard() {
       unlinkedSellOut: unlinked.reduce((sum, p) => sum + (p.sell_out ?? 0), 0),
       unlinkedLoading: unlinked.reduce((sum, p) => sum + (p.loading ?? 0), 0),
     }
-  }, [enrichedPos])
+  }, [simLinkage, enrichedPos])
+
+  // État BTS réel : counts depuis GET /analytics/bts-etat
+  const btsCounts = useMemo(() => {
+    const count = (etat: string) => btsEtat.filter((b) => b.etat === etat).length
+    const normales = count('Normal')
+    const presqueSaturees = count('Presque saturé')
+    const saturees = count('Saturé')
+    return { total: btsEtat.length, normales, presqueSaturees, saturees }
+  }, [btsEtat])
 
   const bestPos = useMemo(() => {
     return [...enrichedPos]
@@ -209,7 +293,7 @@ function Dashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 animate-fade-in stagger-3">
         <StatCard
           label="BTS saturées"
-          value={loading ? undefined : stats?.bts_saturees ?? 0}
+          value={loading ? undefined : btsCounts.saturees}
           loading={loading}
           accent="red"
           small
@@ -227,6 +311,21 @@ function Dashboard() {
           loading={loading}
           accent="green"
           small
+        />
+      </div>
+
+      {/* ── Objectifs & Réalisation KPI (Phase 2) ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 animate-fade-in">
+        <KpiObjectivesCard
+          loading={loading}
+          objectifs={kpiObj?.objectifs}
+          month={kpiObj?.month}
+        />
+        <KpiRealisationsCard
+          loading={loading}
+          realisations={kpiReal?.realisations}
+          taux={kpiReal?.taux}
+          month={kpiReal?.month}
         />
       </div>
 
@@ -404,6 +503,11 @@ function Dashboard() {
         </div>
       </div>
 
+      {/* ── Prime DSM (Phase 2 : critères quantité / montant évalués par le backend) ── */}
+      <div className="animate-fade-in">
+        <PrimeDsmCard loading={loading} stats={stats} kpi={kpiBoth} />
+      </div>
+
       {/* ── Graphiques analytiques ── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 animate-fade-in stagger-7">
         <ChartCard title="Répartition des POS" subtitle="Distribution par statut">
@@ -420,8 +524,8 @@ function Dashboard() {
         <ChartCard title="Saturation BTS" subtitle="Ratio BTS normales vs saturées">
           <SaturationChart
             loading={loading}
-            btsTotal={(stats?.pos_total ?? 0)}
-            btsSaturees={stats?.bts_saturees ?? 0}
+            btsTotal={btsCounts.total || (stats?.bts_saturees ?? 0)}
+            btsSaturees={btsCounts.saturees || (stats?.bts_saturees ?? 0)}
           />
         </ChartCard>
       </div>
