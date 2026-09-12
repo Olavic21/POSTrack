@@ -28,8 +28,10 @@ class Settings(BaseSettings):
     # cookies/credentials (voir app/main.py).
     ALLOWED_ORIGINS: str = "*"
 
-    # Seuil de saturation BTS par defaut (%) utilise pour les alertes Dashboard
+    # Seuils BTS configurables (modifiables sans rewrite)
+    # Saturé >= BTS_SATURATION_THRESHOLD, Presque saturé >= BTS_ALMOST_SATURATED_THRESHOLD
     BTS_SATURATION_THRESHOLD: float = 80.0
+    BTS_ALMOST_SATURATED_THRESHOLD: float = 70.0
 
     # Nombre de jours avant expiration a partir duquel un POS declenche
     # une alerte sur le Dashboard Partenaire (Jour 12 de la roadmap)

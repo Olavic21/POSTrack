@@ -50,3 +50,18 @@ def add_releve(db: Session, *, partner_id: int, user_id: int, bts_id: int, data:
         details=f"Nouveau releve pour {bts.code_bts}",
     )
     return releve
+
+
+def get_bts_etat(taux_saturation: float | None) -> str:
+    """Retourne l'état métier BTS à partir du taux de saturation.
+    Seuils configurables via app.core.config.settings.
+    """
+    from app.core.config import settings
+
+    if taux_saturation is None:
+        return "Normal"
+    if taux_saturation >= settings.BTS_SATURATION_THRESHOLD:
+        return "Saturé"
+    if taux_saturation >= settings.BTS_ALMOST_SATURATED_THRESHOLD:
+        return "Presque saturé"
+    return "Normal"

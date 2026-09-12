@@ -14,7 +14,7 @@ from app.schemas.pagination import Page
 from app.security.permissions import Role, RECONDUCTION_ROLES
 from app.services.requete_service import create_requete, get_requete_in_partner, update_requete, enrich_requete_summary, get_dsm_request_summary
 
-router = APIRouter(prefix="/api/partners/{partner_id}/requests", tags=["Requetes"])
+router = APIRouter(prefix="/api/partners/{partner_id}/requests", tags=["Suivi des requêtes"])
 
 
 TYPE_LABELS = {

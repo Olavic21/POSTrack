@@ -63,8 +63,15 @@ class POSOut(BaseModel):
     status: StatutPos
     stock_initial: int
     stock_actuel: int
+    # Stocks différenciés (conceptuel, sans migration destructive – calculé)
+    stock_initial_creation: int | None = None
+    stock_initial_reconduction: int | None = None
+    stock_final_creation: int | None = None
+    stock_final_reconduction: int | None = None
     donnees_additionnelles: dict | None = None
     date_creation: date
+    # Alias métier : Date de prise en portefeuille
+    date_prise_en_portefeuille: date | None = None
     date_expiration: date
     date_derniere_reconduction: date | None
     created_at: datetime

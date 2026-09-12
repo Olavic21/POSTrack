@@ -96,3 +96,45 @@ class POS(Base):
     def linkage_status(self) -> LinkageStatus:
         """Déduit le statut de linkage à partir de holder_user_id."""
         return LinkageStatus.LINKED if self.holder_user_id else LinkageStatus.UNLINKED
+
+    # --- Terminologie normalisée ---
+    @property
+    def date_prise_en_portefeuille(self):
+        """Alias métier de date_creation (Prise en portefeuille). Conservé pour compatibilité."""
+        return self.date_creation
+
+    @property
+    def stock_initial_creation(self) -> int:
+        """Stock initial création : stock_initial si NOUVEAU, sinon 0 ou valeur JSON."""
+        if self.type_pos == TypePos.NOUVEAU:
+            return self.stock_initial or 0
+        if self.donnees_additionnelles and isinstance(self.donnees_additionnelles, dict):
+            return int(self.donnees_additionnelles.get("stock_initial_creation", 0) or 0)
+        return 0
+
+    @property
+    def stock_initial_reconduction(self) -> int:
+        """Stock initial reconduction : stock_initial si RECONDUIT, sinon valeur JSON."""
+        if self.type_pos == TypePos.RECONDUIT:
+            return self.stock_initial or 0
+        if self.donnees_additionnelles and isinstance(self.donnees_additionnelles, dict):
+            return int(self.donnees_additionnelles.get("stock_initial_reconduction", 0) or 0)
+        return 0
+
+    @property
+    def stock_final_creation(self) -> int:
+        """Stock final création : stock_actuel si NOUVEAU, sinon JSON."""
+        if self.type_pos == TypePos.NOUVEAU:
+            return self.stock_actuel or 0
+        if self.donnees_additionnelles and isinstance(self.donnees_additionnelles, dict):
+            return int(self.donnees_additionnelles.get("stock_final_creation", self.stock_actuel or 0) or 0)
+        return self.stock_actuel or 0
+
+    @property
+    def stock_final_reconduction(self) -> int:
+        """Stock final reconduction : stock_actuel si RECONDUIT."""
+        if self.type_pos == TypePos.RECONDUIT:
+            return self.stock_actuel or 0
+        if self.donnees_additionnelles and isinstance(self.donnees_additionnelles, dict):
+            return int(self.donnees_additionnelles.get("stock_final_reconduction", 0) or 0)
+        return 0

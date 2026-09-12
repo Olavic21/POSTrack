@@ -15,6 +15,8 @@ from app.schemas.pagination import Page
 from app.services.analytics_service import (
     get_dashboard, get_dsm_dashboard, calculate_pos_performance,
     get_partner_sales_summary, get_partner_loading_summary, create_or_update_sales_target, list_sales_targets, get_partner_monthly_table, get_dsm_summary,
+    get_sim_linkage_stats, get_bts_production, get_dsm_production_financiere, get_bts_etat_list,
+    get_kpi_objectives, get_kpi_realisations, get_kpi_dsm_both_criteria, get_daily_tracking, get_sales_table,
 )
 
 router = APIRouter(prefix="/api/partners/{partner_id}/analytics", tags=["Analytics"])
@@ -91,3 +93,67 @@ def list_commissions(partner_id: int = Depends(get_partner_context), period_id: 
 @router.get("/dsm-summary", response_model=DSMSummaryOut)
 def dsm_summary(partner_id: int = Depends(get_partner_context), db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
     return get_dsm_summary(db, partner_id)
+
+
+# --- Production BTS total (formule documentée) ---
+@router.get("/bts-production")
+def bts_production(partner_id: int = Depends(get_partner_context), db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+    """Production BTS total = sum(traffic) sinon sum(capacite) – données réelles."""
+    return get_bts_production(db, partner_id)
+
+
+@router.get("/bts-etat")
+def bts_etat(partner_id: int = Depends(get_partner_context), db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+    """État BTS Normal/Presque saturé/Saturé + capacité/production/taux."""
+    return get_bts_etat_list(db, partner_id)
+
+
+@router.get("/dsm/{dsm_id}/production-financiere")
+def dsm_production_financiere(dsm_id: int, partner_id: int = Depends(get_partner_context), db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+    """Production financière DSM = sum(sim_balance + montant premières recharges)."""
+    return get_dsm_production_financiere(db, partner_id, dsm_id)
+
+
+@router.get("/sim-linkage")
+def sim_linkage(partner_id: int = Depends(get_partner_context), db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+    """SIM linkées/délinkées avec sell-out/loading – données réelles."""
+    return get_sim_linkage_stats(db, partner_id)
+
+
+@router.get("/kpi/objectives")
+def kpi_objectives(partner_id: int = Depends(get_partner_context), month: str | None = None, dsm_id: int | None = None, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+    from datetime import date as _date
+
+    m = _date.fromisoformat(month) if month else None
+    return get_kpi_objectives(db, partner_id, m, dsm_id)
+
+
+@router.get("/kpi/realisations")
+def kpi_realisations(partner_id: int = Depends(get_partner_context), month: str | None = None, dsm_id: int | None = None, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+    from datetime import date as _date
+
+    m = _date.fromisoformat(month) if month else None
+    return get_kpi_realisations(db, partner_id, m, dsm_id)
+
+
+@router.get("/kpi/dsm-both-criteria")
+def kpi_dsm_both(partner_id: int = Depends(get_partner_context), month: str | None = None, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+    from datetime import date as _date
+
+    m = _date.fromisoformat(month) if month else None
+    return get_kpi_dsm_both_criteria(db, partner_id, m)
+
+
+@router.get("/tracking/daily")
+def tracking_daily(partner_id: int = Depends(get_partner_context), dsm_id: int | None = None, date: str | None = None, db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+    """Suivi quotidien filtrable par date/mois/DSM/partenaire – calendrier."""
+    from datetime import date as _date
+
+    d = _date.fromisoformat(date) if date else None
+    return get_daily_tracking(db, partner_id, dsm_id, d)
+
+
+@router.get("/sales/table")
+def sales_table(partner_id: int = Depends(get_partner_context), months: int = Query(default=3, ge=1, le=12), db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+    """Table Numéro/DSM/POS/Mois1..MoisN/Total/Moyenne – Total/Moyenne calculés backend."""
+    return get_sales_table(db, partner_id, months)

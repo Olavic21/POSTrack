@@ -725,3 +725,309 @@ def calculate_pos_performance(db: Session, *, partner_id: int, period_start: dat
         )
         .all()
     )
+
+
+# --- SIM linkées / délinkées (terminologie & sell-out/loading) ---
+def get_sim_linkage_stats(db: Session, partner_id: int) -> dict:
+    """Stats SIM linkées vs délinkées basées sur POS.holder_user_id.
+    Linkée = POS avec holder (LINKED), Délinkée = POS sans holder.
+    Données réelles, pas de valeurs statiques.
+    """
+    from app.models.pos import POS
+
+    linkees = (
+        db.query(func.count(SIM.id))
+        .join(POS, SIM.pos_id == POS.id)
+        .filter(SIM.partner_id == partner_id, POS.holder_user_id.isnot(None))
+        .scalar()
+        or 0
+    )
+    delinkees = (
+        db.query(func.count(SIM.id))
+        .join(POS, SIM.pos_id == POS.id)
+        .filter(SIM.partner_id == partner_id, POS.holder_user_id.is_(None))
+        .scalar()
+        or 0
+    )
+    # sell-out = SIM ACTIVE/ASSIGNEE via mouvements VENTE/ACTIVATION
+    sell_out_linkees = (
+        db.query(func.count(SIM.id))
+        .join(POS, SIM.pos_id == POS.id)
+        .filter(SIM.partner_id == partner_id, POS.holder_user_id.isnot(None), SIM.status.in_([StatutSim.ASSIGNEE, StatutSim.ACTIVE]))
+        .scalar()
+        or 0
+    )
+    sell_out_delinkees = (
+        db.query(func.count(SIM.id))
+        .join(POS, SIM.pos_id == POS.id)
+        .filter(SIM.partner_id == partner_id, POS.holder_user_id.is_(None), SIM.status.in_([StatutSim.ASSIGNEE, StatutSim.ACTIVE]))
+        .scalar()
+        or 0
+    )
+    loading_linkees = (
+        db.query(func.count(SIM.id))
+        .join(POS, SIM.pos_id == POS.id)
+        .filter(SIM.partner_id == partner_id, POS.holder_user_id.isnot(None), SIM.status == StatutSim.EN_STOCK)
+        .scalar()
+        or 0
+    )
+    loading_delinkees = (
+        db.query(func.count(SIM.id))
+        .join(POS, SIM.pos_id == POS.id)
+        .filter(SIM.partner_id == partner_id, POS.holder_user_id.is_(None), SIM.status == StatutSim.EN_STOCK)
+        .scalar()
+        or 0
+    )
+    return {
+        "linkees": {"nombre": linkees, "sell_out": sell_out_linkees, "loading": loading_linkees},
+        "delinkees": {"nombre": delinkees, "sell_out": sell_out_delinkees, "loading": loading_delinkees},
+        "total": linkees + delinkees,
+    }
+
+
+# --- Production BTS total (formule documentée) ---
+def get_bts_production(db: Session, partner_id: int) -> dict:
+    """Production BTS total = somme traffic_volume_gb (données réelles) ;
+    fallback capacite_max si traffic absent. Non additionnés sans sens métier :
+    on documente que traffic = production réelle (Go), capacite = capacité max (Go).
+    """
+    bts_list = db.query(BTS).filter(BTS.partner_id == partner_id).all()
+    total_traffic = sum(float(b.traffic_volume_gb or 0) for b in bts_list)
+    total_capacite = sum(float(b.capacite_max or 0) for b in bts_list)
+    # Production retenue = traffic si >0 sinon capacite
+    production = total_traffic if total_traffic > 0 else total_capacite
+    return {
+        "partner_id": partner_id,
+        "production_totale": production,
+        "production_traffic_gb": total_traffic,
+        "production_capacite": total_capacite,
+        "nombre_bts": len(bts_list),
+        "formule": "sum(traffic_volume_gb) si >0 sinon sum(capacite_max) – données réelles BTS",
+    }
+
+
+def get_dsm_production_financiere(db: Session, partner_id: int, dsm_id: int) -> dict:
+    """Production financière DSM = somme sim_balance (STOCK ODI/CESCO) + montant premières recharges (Master Color).
+    Source : POS.sim_balance (ODI/CESCO) + POS.donnees_additionnelles.montant_initial (Master Color).
+    """
+    pos_list = db.query(POS).filter(POS.partner_id == partner_id, POS.dsm_id == dsm_id).all()
+    total = 0.0
+    for p in pos_list:
+        if p.sim_balance is not None:
+            total += float(p.sim_balance)
+        elif p.donnees_additionnelles and isinstance(p.donnees_additionnelles, dict):
+            total += float(p.donnees_additionnelles.get("montant_initial", 0) or 0)
+    return {"dsm_id": dsm_id, "partner_id": partner_id, "production_financiere": total, "nombre_pos": len(pos_list), "source": "POS.sim_balance + donnees_additionnelles.montant_initial"}
+
+
+# --- BTS état ---
+def get_bts_etat_list(db: Session, partner_id: int) -> list[dict]:
+    """Liste BTS avec état Normal/Presque saturé/Saturé, capacité, production, taux, lat/lon."""
+    from app.services.bts_service import get_bts_etat
+
+    bts_list = db.query(BTS).filter(BTS.partner_id == partner_id).all()
+    # Dernier relevé par BTS
+    latest = (
+        db.query(BTSReleve.bts_id, func.max(BTSReleve.date_releve).label("max_date"))
+        .group_by(BTSReleve.bts_id)
+        .subquery()
+    )
+    releves = {
+        r.bts_id: r
+        for r in db.query(BTSReleve)
+        .join(latest, (BTSReleve.bts_id == latest.c.bts_id) & (BTSReleve.date_releve == latest.c.max_date))
+        .all()
+    }
+    out = []
+    for b in bts_list:
+        rel = releves.get(b.id)
+        taux = rel.taux_saturation if rel and rel.taux_saturation is not None else None
+        etat = get_bts_etat(taux)
+        out.append(
+            {
+                "id": b.id,
+                "code_bts": b.code_bts,
+                "latitude": b.latitude,
+                "longitude": b.longitude,
+                "capacite": b.capacite_max,
+                "production": b.traffic_volume_gb,
+                "taux_saturation": taux,
+                "etat": etat,
+            }
+        )
+    return out
+
+
+# --- KPI ---
+def get_kpi_objectives(db: Session, partner_id: int, month: date | None = None, dsm_id: int | None = None) -> dict:
+    """Objectifs KPI (sell-out, loading, création, reconduction, revenus) depuis PartnerSalesTarget/DSMObjective."""
+    from app.models.dsm_objective import DSMObjective
+
+    if month is None:
+        month = date.today().replace(day=1)
+    else:
+        month = month.replace(day=1)
+    target = db.query(PartnerSalesTarget).filter(PartnerSalesTarget.partner_id == partner_id, PartnerSalesTarget.month == month).first()
+    # DSM spécifique si demandé
+    dsm_target = None
+    if dsm_id:
+        dsm_target = db.query(DSMObjective).filter(DSMObjective.partner_id == partner_id, DSMObjective.dsm_id == dsm_id, DSMObjective.month == month).first()
+    def val(attr):
+        if dsm_target and hasattr(dsm_target, attr) and getattr(dsm_target, attr) is not None:
+            return getattr(dsm_target, attr)
+        return getattr(target, attr) if target and hasattr(target, attr) else None
+    return {
+        "partner_id": partner_id,
+        "dsm_id": dsm_id,
+        "month": month.isoformat(),
+        "objectifs": {
+            "sell_out": val("sell_out_target"),
+            "loading": val("loading_target"),
+            "creation_pos": val("creation_target"),
+            "reconduction_pos": val("redeployment_target"),
+            "revenus": val("revenue_target"),
+        },
+    }
+
+
+def get_kpi_realisations(db: Session, partner_id: int, month: date | None = None, dsm_id: int | None = None) -> dict:
+    """Réalisations KPI calculées depuis données réelles (POS/SIM/POSPerformance)."""
+    if month is None:
+        month = date.today().replace(day=1)
+    else:
+        month = month.replace(day=1)
+    # Création / reconduction
+    q = db.query(POS).filter(POS.partner_id == partner_id)
+    if dsm_id:
+        q = q.filter(POS.dsm_id == dsm_id)
+    # Filtrer par mois de création
+    pos_list = q.all()
+    # Pour simplifier, cumul mensuel = POS dont date_creation dans le mois
+    creation = sum(1 for p in pos_list if p.date_creation.year == month.year and p.date_creation.month == month.month and p.type_pos == TypePos.NOUVEAU)
+    reconduction = sum(1 for p in pos_list if p.date_creation.year == month.year and p.date_creation.month == month.month and p.type_pos == TypePos.RECONDUIT)
+    # sell-out / loading via SIM
+    sim_q = db.query(SIM).filter(SIM.partner_id == partner_id)
+    if dsm_id:
+        sim_q = sim_q.join(POS, SIM.pos_id == POS.id).filter(POS.dsm_id == dsm_id)
+    sell_out = sim_q.filter(SIM.status.in_([StatutSim.ASSIGNEE, StatutSim.ACTIVE])).count()
+    loading = sim_q.filter(SIM.status == StatutSim.EN_STOCK).count()
+    # revenus via POSPerformance.revenue
+    perf_q = db.query(func.coalesce(func.sum(POSPerformance.revenue), 0)).join(POS, POSPerformance.pos_id == POS.id).filter(POS.partner_id == partner_id)
+    if dsm_id:
+        perf_q = perf_q.filter(POS.dsm_id == dsm_id)
+    revenus = float(perf_q.scalar() or 0)
+    objectifs = get_kpi_objectives(db, partner_id, month, dsm_id)["objectifs"]
+    def taux(real, obj):
+        if obj is None or obj == 0:
+            return None
+        return min(100.0, float(real) / float(obj) * 100)
+    return {
+        "partner_id": partner_id,
+        "dsm_id": dsm_id,
+        "month": month.isoformat(),
+        "realisations": {"sell_out": sell_out, "loading": loading, "creation_pos": creation, "reconduction_pos": reconduction, "revenus": revenus},
+        "taux": {
+            "sell_out": taux(sell_out, objectifs["sell_out"]),
+            "loading": taux(loading, objectifs["loading"]),
+            "creation_pos": taux(creation, objectifs["creation_pos"]),
+            "reconduction_pos": taux(reconduction, objectifs["reconduction_pos"]),
+            "revenus": taux(revenus, objectifs["revenus"]),
+        },
+        "objectifs": objectifs,
+    }
+
+
+def get_kpi_dsm_both_criteria(db: Session, partner_id: int, month: date | None = None) -> dict:
+    """Nombre de DSM ayant simultanément atteint critères quantité (POS créés) et montant (revenus)."""
+    if month is None:
+        month = date.today().replace(day=1)
+    dsm_list = db.query(DSM).filter(DSM.partner_id == partner_id).all()
+    count = 0
+    details = []
+    for dsm in dsm_list:
+        obj = get_kpi_objectives(db, partner_id, month, dsm.id)["objectifs"]
+        real = get_kpi_realisations(db, partner_id, month, dsm.id)
+        qty_ok = obj["creation_pos"] is not None and real["realisations"]["creation_pos"] >= obj["creation_pos"]
+        amt_ok = obj["revenus"] is not None and real["realisations"]["revenus"] >= obj["revenus"]
+        both = qty_ok and amt_ok
+        if both:
+            count += 1
+        details.append({"dsm_id": dsm.id, "matricule": dsm.matricule, "qty_ok": qty_ok, "amt_ok": amt_ok, "both": both})
+    return {"partner_id": partner_id, "month": month.isoformat(), "dsm_both_criteria": count, "total_dsm": len(dsm_list), "details": details}
+
+
+# --- Suivi quotidien ---
+def get_daily_tracking(db: Session, partner_id: int, dsm_id: int | None = None, target_date: date | None = None) -> list[dict]:
+    """Suivi quotidien DSM – réutilise POSPerformance (daily)."""
+    q = db.query(POSPerformance).join(POS, POSPerformance.pos_id == POS.id).filter(POS.partner_id == partner_id)
+    if dsm_id:
+        q = q.filter(POS.dsm_id == dsm_id)
+    if target_date:
+        q = q.filter(POSPerformance.period_start == target_date)
+    rows = q.all()
+    # Agrégation par date / DSM
+    out = []
+    for r in rows:
+        pos = db.query(POS).filter(POS.id == r.pos_id).first()
+        out.append(
+            {
+                "date": r.period_start.isoformat() if r.period_start else None,
+                "partner_id": partner_id,
+                "dsm_id": pos.dsm_id if pos else None,
+                "sell_out": int(r.stock_value or 0),
+                "loading": int(r.revenue or 0),
+                "creation": 1 if pos and pos.type_pos == TypePos.NOUVEAU else 0,
+                "reconduction": 1 if pos and pos.type_pos == TypePos.RECONDUIT else 0,
+                "fiabilisation_creation": int(r.active_sims_count or 0),
+                "fiabilisation_redeploiement": 0,
+                "cumul_achat": int(r.stock_value or 0),
+                "realisation": int(r.revenue or 0),
+                "cumul_realisation": int(r.revenue or 0),
+                "statut": r.source.value if r.source else None,
+            }
+        )
+    return out
+
+
+# --- Table des ventes ---
+def get_sales_table(db: Session, partner_id: int, months: int = 3) -> list[dict]:
+    """Table Numéro / DSM / POS / Mois1..MoisN / Total / Moyenne – Total/Moyenne calculés backend."""
+    from datetime import timedelta
+
+    # Derniers N mois à partir d'aujourd'hui
+    today = date.today()
+    month_starts = []
+    for i in range(months - 1, -1, -1):
+        y = today.year
+        m = today.month - i
+        while m <= 0:
+            m += 12
+            y -= 1
+        month_starts.append(date(y, m, 1))
+    pos_list = db.query(POS).filter(POS.partner_id == partner_id).order_by(POS.id).all()
+    rows = []
+    for idx, pos in enumerate(pos_list, start=1):
+        # Pour chaque POS, récupérer revenue par mois via POSPerformance
+        perfs = db.query(POSPerformance).filter(POSPerformance.pos_id == pos.id).all()
+        # mapper mois -> revenue
+        rev_by_month = {}
+        for p in perfs:
+            key = p.period_start.strftime("%Y-%m") if p.period_start else ""
+            rev_by_month[key] = float(p.revenue or 0)
+        mois_vals = []
+        for ms in month_starts:
+            key = ms.strftime("%Y-%m")
+            mois_vals.append(rev_by_month.get(key, 0))
+        total = sum(mois_vals)
+        moyenne = total / months if months else 0
+        rows.append(
+            {
+                "numero": idx,
+                "numero_dsm": db.query(DSM.matricule).filter(DSM.id == pos.dsm_id).scalar() if pos.dsm_id else None,
+                "numero_pos": pos.code_pos,
+                **{f"mois_{i+1}": v for i, v in enumerate(mois_vals)},
+                "total": total,
+                "moyenne": moyenne,
+            }
+        )
+    return rows
