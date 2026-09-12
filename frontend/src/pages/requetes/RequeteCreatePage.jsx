@@ -78,7 +78,7 @@ export default function RequeteCreatePage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
-        title="Nouvelle requête"
+        title="Ajouter nouvelle requête"
         subtitle="Remontée d'une demande terrain vers l'entité en charge."
         breadcrumbs={['Espace partenaire', 'Requêtes', 'Création']}
       />

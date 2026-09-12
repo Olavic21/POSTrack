@@ -57,7 +57,7 @@ export default function POSForm({
     if (!form.ville.trim()) next.ville = 'La ville est requise.';
     if (form.latitude !== '' && Number.isNaN(Number(form.latitude))) next.latitude = 'Latitude invalide.';
     if (form.longitude !== '' && Number.isNaN(Number(form.longitude))) next.longitude = 'Longitude invalide.';
-    if (!form.date_creation) next.date_creation = 'La date de création est requise.';
+    if (!form.date_creation) next.date_creation = 'La date de prise en portefeuille est requise.';
     if (!form.date_expiration) next.date_expiration = "La date d'expiration est requise.";
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -139,7 +139,7 @@ export default function POSForm({
             </select>
           </Field>
 
-          <Field label="Date de création" error={errors.date_creation}>
+          <Field label="Date de prise en portefeuille" error={errors.date_creation}>
             <input
               type="date"
               value={form.date_creation}

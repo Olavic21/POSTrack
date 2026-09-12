@@ -10,10 +10,12 @@ import ChartCard from '../components/Dashboard/ChartCard'
 import POSDistributionChart from '../components/Dashboard/POSDistributionChart'
 import SaturationChart from '../components/Dashboard/SaturationChart'
 import PrimeChart from '../components/Dashboard/PrimeChart'
-import SIMStockChart from '../components/Dashboard/SIMStockChart'
 import KpiObjectivesCard from '../components/Dashboard/KpiObjectivesCard'
 import KpiRealisationsCard from '../components/Dashboard/KpiRealisationsCard'
 import PrimeDsmCard from '../components/Dashboard/PrimeDsmCard'
+import BtsEtatCard from '../components/Dashboard/BtsEtatCard'
+import BtsProductionCard from '../components/Dashboard/BtsProductionCard'
+import primeService from '../services/primeService'
 
 type Stats = {
   partner_name?: string
@@ -112,6 +114,8 @@ function Dashboard() {
   const [kpiBoth, setKpiBoth] = useState<KpiDsmBothCriteria | null>(null)
   const [simLinkage, setSimLinkage] = useState<SimLinkage | null>(null)
   const [btsEtat, setBtsEtat] = useState<BtsEtatRow[]>([])
+  const [btsProduction, setBtsProduction] = useState<Record<string, unknown> | null>(null)
+  const [primeSummary, setPrimeSummary] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -128,12 +132,14 @@ function Dashboard() {
           setKpiBoth(null)
           setSimLinkage(null)
           setBtsEtat([])
+          setBtsProduction(null)
+          setPrimeSummary(null)
           setLoading(false)
         }
         return
       }
       try {
-        const [statsRes, salesRes, posRes, identityRes, kpiObjRes, kpiRealRes, kpiBothRes, simLinkRes, btsEtatRes] = await Promise.all([
+        const [statsRes, salesRes, posRes, identityRes, kpiObjRes, kpiRealRes, kpiBothRes, simLinkRes, btsEtatRes, btsProdRes] = await Promise.all([
           analyticsService.getDashboard(partnerContextId),
           analyticsService.getSalesSummary(partnerContextId),
           posService.getEnriched({ limit: 100 }),
@@ -143,6 +149,7 @@ function Dashboard() {
           analyticsService.getKpiDsmBothCriteria(partnerContextId),
           analyticsService.getSimLinkage(partnerContextId),
           analyticsService.getBtsEtat(partnerContextId),
+          analyticsService.getBtsProduction(partnerContextId),
         ])
         if (!ignore) {
           setStats(statsRes.data)
@@ -155,6 +162,7 @@ function Dashboard() {
           setKpiBoth(kpiBothRes.data ?? null)
           setSimLinkage(simLinkRes.data ?? null)
           setBtsEtat(Array.isArray(btsEtatRes.data) ? btsEtatRes.data : [])
+          setBtsProduction(btsProdRes.data ?? null)
         }
       } catch {
         if (!ignore) {
@@ -170,6 +178,34 @@ function Dashboard() {
         }
       } finally {
         if (!ignore) setLoading(false)
+      }
+    }
+    void load()
+    return () => { ignore = true }
+  }, [partnerContextId])
+
+  // Résumé primes DSM (Création / Revenus) sur la période OPEN — réutilise
+  // le service et la logique de PartnerPrimesDashboard (aucun calcul frontend).
+  useEffect(() => {
+    if (!partnerContextId) {
+      setPrimeSummary(null)
+      return
+    }
+    let ignore = false
+    const load = async () => {
+      try {
+        const res = await primeService.getPeriods(partnerContextId)
+        const data = res.data?.items ?? res.data ?? []
+        const list = Array.isArray(data) ? data : []
+        const openPeriod = list.find((p) => p.status === 'OPEN')
+        if (!openPeriod) {
+          if (!ignore) setPrimeSummary(null)
+          return
+        }
+        const sumRes = await primeService.getDsmPrimeSummary(partnerContextId, openPeriod.id)
+        if (!ignore) setPrimeSummary(sumRes.data ?? null)
+      } catch {
+        if (!ignore) setPrimeSummary(null)
       }
     }
     void load()
@@ -276,8 +312,8 @@ function Dashboard() {
           accent="green"
         />
         <StatCard
-          label="SIM en stock"
-          value={loading ? undefined : stats?.sim_en_stock ?? 0}
+          label="BTS"
+          value={loading ? undefined : btsCounts.total}
           loading={loading}
           accent="sky"
         />
@@ -286,31 +322,6 @@ function Dashboard() {
           value={loading ? undefined : stats?.requetes_ouvertes ?? 0}
           loading={loading}
           accent="amber"
-        />
-      </div>
-
-      {/* Secondary stat cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 animate-fade-in stagger-3">
-        <StatCard
-          label="BTS saturées"
-          value={loading ? undefined : btsCounts.saturees}
-          loading={loading}
-          accent="red"
-          small
-        />
-        <StatCard
-          label="Montant primes période"
-          value={loading ? undefined : stats?.montant_primes_periode ? `${Number(stats.montant_primes_periode).toLocaleString('fr-FR')} FCFA` : '0 FCFA'}
-          loading={loading}
-          accent="green"
-          small
-        />
-        <StatCard
-          label="Primes validées"
-          value={loading ? undefined : stats?.primes_validees ?? 0}
-          loading={loading}
-          accent="green"
-          small
         />
       </div>
 
@@ -327,6 +338,112 @@ function Dashboard() {
           taux={kpiReal?.taux}
           month={kpiReal?.month}
         />
+      </div>
+
+      {/* ── Prime DSM ── */}
+      <div className="animate-fade-in">
+        <PrimeDsmCard loading={loading} stats={stats} kpi={kpiBoth} />
+      </div>
+
+      {/* ── Montant prime ── */}
+      <div className="card overflow-hidden animate-fade-in">
+        <div className="p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#dd7a01]">Montant prime</p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-10 gap-y-2">
+            <div>
+              <p className="text-xs text-slate-500">Total période</p>
+              <p className="text-lg font-bold text-slate-900">{loading ? '…' : stats?.montant_primes_periode ? `${Number(stats.montant_primes_periode).toLocaleString('fr-FR')} FCFA` : '0 FCFA'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Primes validées / en attente</p>
+              <p className="text-lg font-bold text-slate-900">{loading ? '…' : `${(stats?.primes_validees ?? 0)} / ${(stats?.primes_en_attente ?? 0)}`}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Réalisation POS créé / POS reconduit ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 animate-fade-in">
+        <div className="card overflow-hidden border-l-[3px] border-l-brand-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-600">Réalisation POS créé</p>
+            <div className="mt-3 flex items-end justify-between">
+              <div>
+                <p className="text-xs text-slate-500">Objectif (mois)</p>
+                <p className="text-lg font-bold text-slate-900">{loading ? '…' : kpiObj?.objectifs?.creation_pos != null ? formatInt(kpiObj.objectifs.creation_pos) : '—'}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-slate-500">Réalisé</p>
+                <p className="text-xl font-extrabold text-slate-900">{loading ? '…' : formatInt(kpiReal?.realisations?.creation_pos ?? 0)}</p>
+                <p className="text-xs font-semibold text-slate-500">{kpiReal?.taux?.creation_pos == null ? '—' : `${Number(kpiReal.taux.creation_pos).toFixed(1)} %`}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="card overflow-hidden border-l-[3px] border-l-emerald-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2e844a]">Réalisation POS reconduit</p>
+            <div className="mt-3 flex items-end justify-between">
+              <div>
+                <p className="text-xs text-slate-500">Objectif (mois)</p>
+                <p className="text-lg font-bold text-slate-900">{loading ? '…' : kpiObj?.objectifs?.reconduction_pos != null ? formatInt(kpiObj.objectifs.reconduction_pos) : '—'}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-slate-500">Réalisé</p>
+                <p className="text-xl font-extrabold text-slate-900">{loading ? '…' : formatInt(kpiReal?.realisations?.reconduction_pos ?? 0)}</p>
+                <p className="text-xs font-semibold text-slate-500">{kpiReal?.taux?.reconduction_pos == null ? '—' : `${Number(kpiReal.taux.reconduction_pos).toFixed(1)} %`}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Prime création / Prime reconduction ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 animate-fade-in">
+        <div className="card overflow-hidden border-l-[3px] border-l-indigo-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#0176d3]">Prime création</p>
+            <div className="mt-3 flex items-end justify-between gap-2">
+              <div>
+                <p className="text-xs text-slate-500">Montant (période ouverte)</p>
+                <p className="text-lg font-bold text-slate-900">{loading ? '…' : primeSummary?.total_creation_prime != null ? `${Number(primeSummary.total_creation_prime).toLocaleString('fr-FR')} FCFA` : '—'}</p>
+              </div>
+              <p className="text-xs text-slate-400">{primeSummary?.dsm_count != null ? `${primeSummary.dsm_count} DSM` : 'Période ouverte indisponible'}</p>
+            </div>
+          </div>
+        </div>
+        <div className="card overflow-hidden border-l-[3px] border-l-emerald-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2e844a]">Prime reconduction</p>
+            <div className="mt-3">
+              <p className="text-sm text-slate-600">{primeSummary?.total_revenue_prime != null
+                ? `Montant primes revenus : ${Number(primeSummary.total_revenue_prime).toLocaleString('fr-FR')} FCFA`
+                : "Aucune donnée de prime sur période ouverte. Le modèle backend exprime les primes des DSM via les grilles CREATION / REVENUE — une 'prime de reconduction' distincte n'est pas encore modélisée (POS reconduit non primé : règle backend actuelle)."}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── État des BTS + Production BTS ── */}
+      <BtsEtatCard loading={loading} btsEtat={btsEtat} />
+      <BtsProductionCard loading={loading} production={btsProduction} />
+
+      {/* ── Loading / Sell-out ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 animate-fade-in">
+        <div className="card overflow-hidden border-l-[3px] border-l-sky-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#0d9dd1]">Loading</p>
+            <p className="mt-3 text-2xl font-extrabold text-slate-900">{loading ? '…' : formatInt(salesSummary?.loading?.cumul ?? 0)}</p>
+            <p className="mt-1 text-xs text-slate-400">Consommation totale (loading)</p>
+          </div>
+        </div>
+        <div className="card overflow-hidden border-l-[3px] border-l-emerald-500">
+          <div className="p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2e844a]">Sell-out</p>
+            <p className="mt-3 text-2xl font-extrabold text-slate-900">{loading ? '…' : formatInt(salesSummary?.sell_out?.cumul ?? 0)}</p>
+            <p className="mt-1 text-xs text-slate-400">Volume de ventes (sell-out)</p>
+          </div>
+        </div>
       </div>
 
       {/* ── Stocks initiaux ── */}
@@ -492,11 +609,11 @@ function Dashboard() {
         </div>
         <div className="card overflow-hidden border-l-[3px] border-l-amber-500">
           <div className="p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#dd7a01]">Montant primes</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#dd7a01]">Revenus</p>
             <div className="mt-3 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-600">Total période</span>
-                <span className="text-lg font-bold text-slate-900">{loading ? '…' : stats?.montant_primes_periode ? `${Number(stats.montant_primes_periode).toLocaleString('fr-FR')} FCFA` : '0 FCFA'}</span>
+                <span className="text-sm text-slate-600">Objectif</span>
+                <span className="text-lg font-bold text-slate-900">{loading ? '…' : formatInt(salesSummary?.revenue_global?.objectif ?? 0)}</span>
               </div>
             </div>
           </div>
@@ -536,14 +653,6 @@ function Dashboard() {
             loading={loading}
             primesEnAttente={stats?.primes_en_attente ?? 0}
             primesValidees={stats?.primes_validees ?? 0}
-          />
-        </ChartCard>
-
-        <ChartCard title="Stock SIM" subtitle="Inventaire et affectation">
-          <SIMStockChart
-            loading={loading}
-            simEnStock={stats?.sim_en_stock ?? 0}
-            simAssignees={stats?.sim_assignees ?? 0}
           />
         </ChartCard>
       </div>

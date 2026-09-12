@@ -207,7 +207,7 @@ export default function POSDetailPage() {
           label="Coordonnées"
           value={<CoordinateBadge latitude={pos.latitude} longitude={pos.longitude} />}
         />
-        <InfoCard label="Date de création" value={pos.date_creation} />
+        <InfoCard label="Date de prise en portefeuille" value={pos.date_prise_en_portefeuille ?? pos.date_creation} />
         <InfoCard label="Date d'expiration" value={pos.date_expiration} />
       </section>
 

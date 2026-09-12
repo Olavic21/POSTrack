@@ -36,6 +36,7 @@ const SimsStockPage = lazy(() => import('./pages/sims/SimsStockPage'))
 const RequetesListPage = lazy(() => import('./pages/requetes/RequetesListPage'))
 const ImportExportPage = lazy(() => import('./pages/import-export/ImportExportPage'))
 const SuiviVentesPage = lazy(() => import('./pages/ventes/SuiviVentesPage'))
+const SuiviQuotidienPage = lazy(() => import('./pages/tracking/SuiviQuotidienPage'))
 const AuditLogsPage = lazy(() => import('./pages/audit/AuditLogsPage'))
 const SalesTargetsPage = lazy(() => import('./pages/analytics/SalesTargetsPage'))
 const PartenaireCreatePage = lazy(() => import('./pages/partenaires/PartenaireCreatePage'))
@@ -318,6 +319,11 @@ function App() {
             <Route path="ventes" element={
               <Suspense fallback={<LoadingSpinner />}>
                 <SuiviVentesPage />
+              </Suspense>
+            } />
+            <Route path="suivi-quotidien" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <SuiviQuotidienPage />
               </Suspense>
             } />
             <Route path="requetes" element={

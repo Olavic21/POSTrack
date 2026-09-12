@@ -8,6 +8,8 @@ import MonthlyTableCard from '../../components/Sales/MonthlyTableCard';
 import DSMSummaryCard from '../../components/Sales/DSMSummaryCard';
 import MonthlyTrendChart from '../../components/Sales/MonthlyTrendChart';
 import DSMPerformanceChart from '../../components/Sales/DSMPerformanceChart';
+import SalesTableCard from '../../components/Sales/SalesTableCard';
+
 import ChartCard from '../../components/Dashboard/ChartCard';
 import analyticsService from '../../services/analyticsService';
 import usePartner from '../../hooks/usePartner';
@@ -267,6 +269,9 @@ const SuiviVentesPage = () => {
       <DSMSummaryCard data={dsmSummary} />
       
       <MonthlyTableCard data={monthlyTable} />
+
+      {/* Tableau des ventes détaillé (backend /analytics/sales/table) */}
+      <SalesTableCard />
     </div>
   );
 };
