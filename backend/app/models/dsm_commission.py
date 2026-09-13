@@ -16,6 +16,8 @@ from app.core.database import Base
 class StatutCommission(str, enum.Enum):
     DRAFT = "DRAFT"
     CALCULATED = "CALCULATED"
+    ELIGIBLE = "ELIGIBLE"
+    NON_ELIGIBLE = "NON_ELIGIBLE"
     VALIDATED = "VALIDATED"
     PAID = "PAID"
     REJECTED = "REJECTED"

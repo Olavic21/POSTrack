@@ -1031,3 +1031,37 @@ def get_sales_table(db: Session, partner_id: int, months: int = 3) -> list[dict]
             }
         )
     return rows
+
+# ============================================================
+# Prime DSM — exposition des fonctions du moteur existant
+# Ces wrappers lisent DSMCommission (déjà calculé par
+# calculate_dsm_primes_for_period), ne refont pas le calcul.
+# Constantes : config.py (DSM_DEFAULT_*, PRIME_THRESHOLD_*, PRIME_RATE_*)
+# ============================================================
+from app.services.dsm_prime_calculation_service import (
+    get_partner_prime_summary as _get_partner_prime_summary,
+    get_dsm_prime_detail as _get_dsm_prime_detail,
+)
+
+
+def get_dsm_prime_summary(
+    db: Session,
+    partner_id: int,
+    prime_period_id: int,
+) -> dict:
+    """Résumé partenaire : total + par DSM — source : DSMCommission."""
+    return _get_partner_prime_summary(
+        db, partner_id, prime_period_id
+    )
+
+
+def get_dsm_prime_detail(
+    db: Session,
+    partner_id: int,
+    dsm_id: int,
+    prime_period_id: int,
+) -> dict:
+    """Détail DSM : objectifs, réalisations, taux, montant — source : DSMCommission."""
+    return _get_dsm_prime_detail(
+        db, partner_id, dsm_id, prime_period_id
+    )

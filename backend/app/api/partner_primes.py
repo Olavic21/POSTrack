@@ -18,6 +18,7 @@ from app.services.prime_service import list_primes
 from app.services.prime_calculation_service import calculate_primes_for_period, validate_prime
 from app.services.dsm_prime_calculation_service import (
     calculate_dsm_primes_for_period, get_partner_prime_summary,
+    get_dsm_prime_detail,
 )
 
 router = APIRouter(prefix="/api/partners/{partner_id}/primes", tags=["Primes"])
@@ -84,7 +85,7 @@ def list_commissions(partner_id: int = Depends(get_partner_context), period_id: 
     return dsm_commission_crud.list(db, partner_id=partner_id, prime_period_id=period_id)
 
 
-@router.post("/calculate-dsm")
+@router.post("/calculate-dsm", status_code=201)
 def calculate_dsm_route(
     prime_period_id: int = Query(...),
     partner_id: int = Depends(get_partner_context),
@@ -113,3 +114,38 @@ def dsm_prime_summary(
 ):
     """Resume global des primes DSM pour le dashboard partenaire."""
     return get_partner_prime_summary(db, partner_id, prime_period_id)
+
+
+@router.get("/dsm/summary", response_model=PartnerPrimeSummaryOut)
+def dsm_prime_summary_alias(
+    prime_period_id: int = Query(...),
+    partner_id: int = Depends(get_partner_context),
+    db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+):
+    """Alias /dsm/summary pour compatibilité frontend Phase 3B."""
+    return get_partner_prime_summary(db, partner_id, prime_period_id)
+
+
+@router.get("/dsm/detail")
+def dsm_prime_detail(
+    dsm_id: int = Query(...),
+    prime_period_id: int = Query(...),
+    partner_id: int = Depends(get_partner_context),
+    db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+):
+    """Détail DSM pour une période (source : DSMCommission calculé)."""
+    return get_dsm_prime_detail(db, partner_id, dsm_id, prime_period_id)
+
+
+@router.get("/dsm-detail")
+def dsm_prime_detail_alias(
+    dsm_id: int = Query(...),
+    prime_period_id: int = Query(...),
+    partner_id: int = Depends(get_partner_context),
+    db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+):
+    """Alias /dsm-detail pour compatibilité."""
+    return get_dsm_prime_detail(db, partner_id, dsm_id, prime_period_id)

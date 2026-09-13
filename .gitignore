@@ -208,6 +208,7 @@ temp/
 *.sqlite
 *.sqb
 *.sqlite-journal
+*.db-journal
 
 # Data directories
 data/
@@ -223,6 +224,13 @@ output/
 *.swp
 *.swo
 *.swn
+
+# Generated import reports (runtime - see app/core/config.py IMPORT_REPORTS_DIR)
+import_reports/
+backend/import_reports/
+
+# Generated BTS import uploads (runtime - see app/api/partner_bts.py)
+backend/storage/bts_imports/
 
 # Sensitive configuration files (if not already covered by .env)
 config.local.json

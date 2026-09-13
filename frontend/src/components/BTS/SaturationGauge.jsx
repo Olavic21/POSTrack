@@ -1,12 +1,11 @@
 import React from 'react'
 
 const GAUGE_COLORS = [
-  { threshold: 0, color: '#9ca3af', bgClass: 'bg-gray-200', textColor: 'text-gray-500', label: 'Non mesurée' },
-  { threshold: 30, color: '#22c55e', bgClass: 'bg-green-500', textColor: 'text-green-600', label: 'Faible' },
-  { threshold: 50, color: '#eab308', bgClass: 'bg-yellow-500', textColor: 'text-yellow-600', label: 'Modérée' },
-  { threshold: 70, color: '#f97316', bgClass: 'bg-orange-500', textColor: 'text-orange-600', label: 'Élevée' },
-  { threshold: 90, color: '#ef4444', bgClass: 'bg-red-500', textColor: 'text-red-600', label: 'Critique' },
-  { threshold: 101, color: '#b91c1c', bgClass: 'bg-red-700', textColor: 'text-red-800', label: 'Saturée' },
+  { threshold: 0, color: '#22c55e', bgClass: 'bg-green-500', textColor: 'text-green-600', label: 'Normal' },
+  { threshold: 70, color: '#f97316', bgClass: 'bg-orange-500', textColor: 'text-orange-600', label: 'Presque saturé' },
+  { threshold: 80, color: '#ef4444', bgClass: 'bg-red-500', textColor: 'text-red-600', label: 'Saturé' },
+  { threshold: 90, color: '#dc2626', bgClass: 'bg-red-600', textColor: 'text-red-700', label: 'Saturé' },
+  { threshold: 101, color: '#991b1b', bgClass: 'bg-red-800', textColor: 'text-red-900', label: 'Saturée (101+)' },
 ]
 
 function getGaugeLevel(value) {

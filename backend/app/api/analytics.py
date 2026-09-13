@@ -17,6 +17,7 @@ from app.services.analytics_service import (
     get_partner_sales_summary, get_partner_loading_summary, create_or_update_sales_target, list_sales_targets, get_partner_monthly_table, get_dsm_summary,
     get_sim_linkage_stats, get_bts_production, get_dsm_production_financiere, get_bts_etat_list,
     get_kpi_objectives, get_kpi_realisations, get_kpi_dsm_both_criteria, get_daily_tracking, get_sales_table,
+    get_dsm_prime_summary, get_dsm_prime_detail,
 )
 
 router = APIRouter(prefix="/api/partners/{partner_id}/analytics", tags=["Analytics"])
@@ -151,6 +152,29 @@ def tracking_daily(partner_id: int = Depends(get_partner_context), dsm_id: int |
 
     d = _date.fromisoformat(date) if date else None
     return get_daily_tracking(db, partner_id, dsm_id, d)
+
+
+@router.get("/primes/summary")
+def prime_summary(
+    partner_id: int = Depends(get_partner_context),
+    period_id: int = Query(...),
+    db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+):
+    """Résumé partenaire des primes DSM (source : DSMCommission calculé) — par période."""
+    return get_dsm_prime_summary(db, partner_id, period_id)
+
+
+@router.get("/kpi/dsm-details")
+def dsm_prime_details(
+    partner_id: int = Depends(get_partner_context),
+    dsm_id: int = Query(...),
+    period_id: int = Query(...),
+    db: Session = Depends(get_db),
+    _user: User = Depends(get_current_user),
+):
+    """Détail DSM pour une période (source : DSMCommission calculé)."""
+    return get_dsm_prime_detail(db, partner_id, dsm_id, period_id)
 
 
 @router.get("/sales/table")

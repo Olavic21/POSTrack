@@ -26,6 +26,7 @@ from app.models.dsm_objective import DSMObjective
 from app.models.prime_grid import GridType
 from app.services import audit_service
 from app.services.prime_grid_service import get_active_grid, calculate_prime_amount
+from app.core.config import settings as settings_ref
 
 
 def _count_pos_created_by_dsm(
@@ -42,18 +43,41 @@ def _count_pos_created_by_dsm(
 
 
 def _calculate_revenue_by_dsm(
-    db: Session, partner_id: int, dsm_id: int
+    db: Session, partner_id: int, dsm_id: int, period: PrimePeriod | None = None,
 ) -> Decimal:
-    """Calcule les revenus generes par les POS d'un DSM.
+    """Calcule les revenus éligibles d'un DSM = production financière
+    (premières recharges) des POS du DSM, bornée à la période si fournie.
 
-    Revenus = somme des primes VALIDEE ou PAYEE des POS du DSM.
+    Source : POS.sim_balance (stock ODI/CESCO) + montant premières
+    recharges (Master Color, donnees_additionnelles.montant_initial).
+    Phase 3B : on utilise les premières recharges réellement générées
+    (et non les primes VALIDEE/PAYEE) comme base de la prime DSM.
     """
-    result = db.query(func.coalesce(func.sum(Prime.montant), 0)).join(POS).filter(
-        POS.partner_id == partner_id,
-        POS.dsm_id == dsm_id,
-        Prime.status.in_([StatutPrime.VALIDEE, StatutPrime.PAYEE]),
-    ).scalar()
-    return Decimal(str(result)) if result else Decimal("0")
+    from app.models.pos import POS as _POS
+
+    q = db.query(_POS).filter(_POS.partner_id == partner_id, _POS.dsm_id == dsm_id)
+    if period is not None:
+        q = q.filter(_POS.date_creation >= period.start_date, _POS.date_creation <= period.end_date)
+    total = Decimal("0")
+    for p in q.all():
+        if p.sim_balance is not None:
+            total += Decimal(str(p.sim_balance))
+        elif p.donnees_additionnelles and isinstance(p.donnees_additionnelles, dict):
+            total += Decimal(str(p.donnees_additionnelles.get("montant_initial", 0) or 0))
+    return total
+
+
+def _prime_rate_for_pct(achievement_pct: Decimal) -> Decimal:
+    """Taux de référence configurable : <75 % → 0 ; 75–<95 % → 0,1 % ; >=95 % → 0,5 %."""
+    from app.core.config import settings
+
+    low = Decimal(str(settings.PRIME_THRESHOLD_LOW))
+    high = Decimal(str(settings.PRIME_THRESHOLD_HIGH))
+    if achievement_pct >= high:
+        return Decimal(str(settings.PRIME_RATE_HIGH))
+    if achievement_pct >= low:
+        return Decimal(str(settings.PRIME_RATE_LOW))
+    return Decimal("0")
 
 
 def calculate_dsm_primes_for_period(
@@ -101,7 +125,7 @@ def calculate_dsm_primes_for_period(
         if not dsm:
             continue
 
-        # --- Prime creation ---
+        # --- Réalisation quantité (PU = POS NOUVEAU créés sur la période) ---
         pos_created = _count_pos_created_by_dsm(db, partner_id, obj.dsm_id, period)
         creation_obj = obj.creation_objective or 0
 
@@ -110,10 +134,8 @@ def calculate_dsm_primes_for_period(
         else:
             creation_pct = Decimal("0")
 
-        creation_prime = calculate_prime_amount(creation_grid, creation_pct)
-
-        # --- Prime revenus ---
-        revenue_realized = _calculate_revenue_by_dsm(db, partner_id, obj.dsm_id)
+        # --- Réalisation revenus (premières recharges éligibles, bornées période) ---
+        revenue_realized = _calculate_revenue_by_dsm(db, partner_id, obj.dsm_id, period)
         revenue_obj = obj.revenue_objective or Decimal("0")
 
         if revenue_obj > 0:
@@ -121,13 +143,39 @@ def calculate_dsm_primes_for_period(
         else:
             revenue_pct = Decimal("0")
 
-        if revenue_grid and revenue_pct > 0:
-            # Pour REVENUE, le montant est un pourcentage du revenu reel
-            revenue_pct_rate = calculate_prime_amount(revenue_grid, revenue_pct)
-            revenue_prime = (revenue_realized * revenue_pct_rate / Decimal("100")).quantize(
+        # --- Taux de référence backend (configurable, jamais en React) ---
+        qty_rate = _prime_rate_for_pct(creation_pct)
+        rev_rate = _prime_rate_for_pct(revenue_pct)
+
+        # Double critère : la prime n'est applicable que si les DEUX
+        # critères atteignent au moins le seuil bas (75 % configurable).
+        qty_ok = creation_pct >= Decimal(str(settings_ref.PRIME_THRESHOLD_LOW)) if creation_obj > 0 else False
+        rev_ok = revenue_pct >= Decimal(str(settings_ref.PRIME_THRESHOLD_LOW)) if revenue_obj > 0 else False
+        eligible = bool(qty_ok and rev_ok)
+        # Taux retenu = le plus faible des deux tranches (prudence) ;
+        # 0 si non éligible.
+        prime_rate = min(qty_rate, rev_rate) if eligible else Decimal("0")
+
+        # --- Prime création (grille CREATION active si configurée,
+        # sinon 0 — la règle de référence reste visible via prime_rate) ---
+        if creation_grid:
+            creation_prime = calculate_prime_amount(creation_grid, creation_pct)
+        else:
+            creation_prime = Decimal("0")
+
+        # --- Prime revenus : PRIME = TAUX × REVENUS ÉLIGIBLES ---
+        if eligible and prime_rate > 0:
+            if revenue_grid and revenue_pct > 0:
+                # Grille REVENUE personnalisée : son palier donne le taux.
+                grid_rate = calculate_prime_amount(revenue_grid, revenue_pct)
+                applied_rate = grid_rate if grid_rate > 0 else prime_rate
+            else:
+                applied_rate = prime_rate
+            revenue_prime = (revenue_realized * applied_rate / Decimal("100")).quantize(
                 Decimal("0.01"), rounding=ROUND_HALF_UP
             )
         else:
+            applied_rate = Decimal("0")
             revenue_prime = Decimal("0")
 
         # --- Prime totale ---
@@ -153,7 +201,7 @@ def calculate_dsm_primes_for_period(
             existing.revenue_prime_amount = revenue_prime
             existing.total_prime_amount = total_prime
             existing.dsm_name = dsm.full_name
-            existing.status = StatutCommission.CALCULATED
+            existing.status = StatutCommission.ELIGIBLE if eligible else StatutCommission.NON_ELIGIBLE
             existing.calculated_at = func.now()
             db.add(existing)
             commissions.append(existing)
@@ -164,7 +212,7 @@ def calculate_dsm_primes_for_period(
                 prime_period_id=prime_period_id,
                 eligible_pos_count=pos_created,
                 amount=total_prime,
-                status=StatutCommission.CALCULATED,
+                status=StatutCommission.ELIGIBLE if eligible else StatutCommission.NON_ELIGIBLE,
                 calculated_at=func.now(),
                 creation_objective=creation_obj,
                 creation_realized=pos_created,
