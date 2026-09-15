@@ -53,6 +53,13 @@ export const NAV_ITEMS = [
     level: NAV_LEVELS.PARTNER,
   },
   {
+    id: 'geolocalisation',
+    to: '/geolocalisation',
+    label: 'Géolocalisation',
+    roles: ROLE_GROUPS.PARTNER_PORTFOLIO,
+    level: NAV_LEVELS.PARTNER,
+  },
+  {
     id: 'dsm',
     to: '/dsm',
     label: 'DSM',
@@ -102,22 +109,8 @@ export const NAV_ITEMS = [
   {
     id: 'primes',
     to: '/primes',
-    label: 'Primes',
-    roles: ROLE_GROUPS.ADMIN_ONLY,
-    level: NAV_LEVELS.PARTNER,
-  },
-  {
-    id: 'primes-dsm',
-    to: '/primes/dsm',
     label: 'Primes DSM',
     roles: ROLE_GROUPS.PARTNER_PORTFOLIO,
-    level: NAV_LEVELS.PARTNER,
-  },
-  {
-    id: 'primes-grids',
-    to: '/primes/grids',
-    label: 'Grilles de primes',
-    roles: ROLE_GROUPS.ADMIN_ONLY,
     level: NAV_LEVELS.PARTNER,
   },
   {
@@ -159,7 +152,7 @@ export const NAV_ITEMS = [
   {
     id: 'sales-targets',
     to: '/analytics/sales-targets',
-    label: 'Objectifs (admin)',
+    label: 'Objectifs KPI partenaire',
     roles: ROLE_GROUPS.ADMIN_ONLY,
     level: NAV_LEVELS.PARTNER,
   },

@@ -12,8 +12,6 @@ from app.models.prime_period import PrimePeriod, StatutPeriode  # noqa: F401
 from app.models.prime import Prime, StatutPrime  # noqa: F401
 from app.models.dsm_commission import DSMCommission  # noqa: F401
 from app.models.dsm_objective import DSMObjective  # noqa: F401
-from app.models.prime_grid import PrimeGrid, GridType  # noqa: F401
-from app.models.prime_grid_threshold import PrimeGridThreshold  # noqa: F401
 from app.models.sim import SIM, StatutSim, SIMMovement, TypeMouvementSim  # noqa: F401
 from app.models.bts import BTS  # noqa: F401
 from app.models.bts_releve import BTSReleve  # noqa: F401

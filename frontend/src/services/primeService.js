@@ -52,25 +52,6 @@ export const primeService = {
   updateObjective: (partnerId, objectiveId, payload) =>
     api.patch(`/partners/${partnerId}/dsm-objectives/${objectiveId}`, payload, { skipPartnerPrefix: true }),
 
-  // --- Grilles de primes ---
-  getGrids: (partnerId) =>
-    api.get(`/partners/${partnerId}/prime-grids`, { skipPartnerPrefix: true }),
-
-  createGrid: (partnerId, payload) =>
-    api.post(`/partners/${partnerId}/prime-grids`, payload, { skipPartnerPrefix: true }),
-
-  getGrid: (partnerId, gridId) =>
-    api.get(`/partners/${partnerId}/prime-grids/${gridId}`, { skipPartnerPrefix: true }),
-
-  updateGrid: (partnerId, gridId, payload) =>
-    api.patch(`/partners/${partnerId}/prime-grids/${gridId}`, payload, { skipPartnerPrefix: true }),
-
-  activateGrid: (partnerId, gridId) =>
-    api.post(`/partners/${partnerId}/prime-grids/${gridId}/activate`, {}, { skipPartnerPrefix: true }),
-
-  deleteGrid: (partnerId, gridId) =>
-    api.delete(`/partners/${partnerId}/prime-grids/${gridId}`, { skipPartnerPrefix: true }),
-
   // --- Calcul primes DSM ---
   calculateDsmPrimes: (partnerId, periodId) =>
     api.post(`/partners/${partnerId}/primes/calculate-dsm`, null, {

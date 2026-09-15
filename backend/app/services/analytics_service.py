@@ -893,7 +893,14 @@ def get_bts_etat_list(db: Session, partner_id: int) -> list[dict]:
 
 # --- KPI ---
 def get_kpi_objectives(db: Session, partner_id: int, month: date | None = None, dsm_id: int | None = None) -> dict:
-    """Objectifs KPI (sell-out, loading, création, reconduction, revenus) depuis PartnerSalesTarget/DSMObjective."""
+    """Objectifs KPI — deux sources distinctes (ne jamais melanger) :
+
+    - PartnerSalesTarget (KPI partenaire : sell-out, loading, creation, reconduction, revenus KPI)
+      -> consomme par Dashboard KPI partenaire. Ne sert PAS a la prime DSM.
+    - DSMObjective (objectifs DSM par PrimePeriod, 200 POS / 500k FCFA) -> prime DSM.
+      Si dsm_id fourni, retourne DSMObjective ; sinon retourne PartnerSalesTarget uniquement.
+      Aucune agregation implicite DSMObjective -> KPI partenaire (evite confusion niveau).
+    """
     from app.models.dsm_objective import DSMObjective
 
     if month is None:
@@ -901,14 +908,17 @@ def get_kpi_objectives(db: Session, partner_id: int, month: date | None = None, 
     else:
         month = month.replace(day=1)
     target = db.query(PartnerSalesTarget).filter(PartnerSalesTarget.partner_id == partner_id, PartnerSalesTarget.month == month).first()
-    # DSM spécifique si demandé
     dsm_target = None
     if dsm_id:
         dsm_target = db.query(DSMObjective).filter(DSMObjective.partner_id == partner_id, DSMObjective.dsm_id == dsm_id, DSMObjective.month == month).first()
+
     def val(attr):
         if dsm_target and hasattr(dsm_target, attr) and getattr(dsm_target, attr) is not None:
             return getattr(dsm_target, attr)
-        return getattr(target, attr) if target and hasattr(target, attr) else None
+        if target and hasattr(target, attr) and getattr(target, attr) is not None:
+            return getattr(target, attr)
+        return None
+
     return {
         "partner_id": partner_id,
         "dsm_id": dsm_id,

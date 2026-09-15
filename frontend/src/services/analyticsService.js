@@ -24,8 +24,8 @@ export const analyticsService = {
   getDailyTracking: (partnerId, params) => api.get(`/partners/${partnerId}/analytics/tracking/daily`, { params, skipPartnerPrefix: true }),
   getSalesTable: (partnerId, params) => api.get(`/partners/${partnerId}/analytics/sales/table`, { params, skipPartnerPrefix: true }),
 
-  // --- Phase 3B : primes DSM (résumé partenaire + détail par DSM) ---
-  getDsmPrimeSummary: (partnerId, params) => api.get(`/partners/${partnerId}/primes/dsm/summary`, { params, skipPartnerPrefix: true }),
+  // --- Prime DSM canonique (via /primes/dsm-summary) — évite alias déprécié /primes/dsm/summary ---
+  getDsmPrimeSummary: (partnerId, params) => api.get(`/partners/${partnerId}/primes/dsm-summary`, { params, skipPartnerPrefix: true }),
   getDsmPrimeDetail: (partnerId, params) => api.get(`/partners/${partnerId}/primes/dsm/detail`, { params, skipPartnerPrefix: true }),
 
 };

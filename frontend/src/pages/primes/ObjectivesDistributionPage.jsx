@@ -49,10 +49,14 @@ export default function ObjectivesDistributionPage() {
   }, [partnerContextId]);
 
   const fetchObjectives = async () => {
-    if (!partnerContextId) return;
+    if (!partnerContextId || !selectedPeriod) {
+      setObjectives([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const res = await primeService.getObjectives(partnerContextId, selectedPeriod ? { period_id: selectedPeriod.id } : {});
+      const res = await primeService.getObjectives(partnerContextId, { prime_period_id: selectedPeriod.id });
       const data = res.data?.items ?? res.data ?? [];
       setObjectives(Array.isArray(data) ? data : []);
     } catch {
@@ -63,9 +67,12 @@ export default function ObjectivesDistributionPage() {
   };
 
   const fetchSummary = async () => {
-    if (!partnerContextId) return;
+    if (!partnerContextId || !selectedPeriod) {
+      setSummary(null);
+      return;
+    }
     try {
-      const res = await primeService.getObjectivesSummary(partnerContextId, selectedPeriod ? { period_id: selectedPeriod.id } : {});
+      const res = await primeService.getObjectivesSummary(partnerContextId, { prime_period_id: selectedPeriod.id });
       setSummary(res.data);
     } catch {
       setSummary(null);
@@ -84,10 +91,15 @@ export default function ObjectivesDistributionPage() {
     }
     setDistributing(true);
     try {
+      // Objectifs globaux : si aucun objectif encore distribué, utiliser les défauts métier 200* nbDSM / 500k* nbDSM
+      // Sinon, répartir à partir des totaux déjà en base via summary ; fallback 200/500k par DSM si vide
+      const dsmCountFallback = 1;
+      const globalCreation = summary?.global_creation_target || summary?.total_creation_target || 200 * dsmCountFallback;
+      const globalRevenue = summary?.global_revenue_target || summary?.total_revenue_target || 500000 * dsmCountFallback;
       await primeService.distributeObjectives(partnerContextId, {
-        period_id: selectedPeriod.id,
-        creation_objective: summary?.global_creation_target || 0,
-        revenue_objective: summary?.global_revenue_target || 0,
+        prime_period_id: selectedPeriod.id,
+        global_creation_target: globalCreation,
+        global_revenue_target: globalRevenue,
       });
       await fetchObjectives();
       await fetchSummary();
@@ -107,7 +119,8 @@ export default function ObjectivesDistributionPage() {
     if (!editing) return;
     setSaving(true);
     try {
-      const payload = { [editing.field]: parseFloat(editValue) || 0 };
+      const reason = window.prompt('Motif de la modification manuelle (optionnel) :', '') || undefined;
+      const payload = { [editing.field]: parseFloat(editValue) || 0, ...(reason ? { reason } : {}) };
       await primeService.updateObjective(partnerContextId, editing.id, payload);
       setEditing(null);
       await fetchObjectives();
@@ -131,10 +144,11 @@ export default function ObjectivesDistributionPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="animate-fade-in">
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Objectifs DSM</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Objectifs DSM par période</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Distribution automatique des objectifs mondiaux aux DSM selon leur coefficient de potentiel.
+          Objectif global (ex : 200 POS × nb DSM, 500 000 FCFA × nb DSM) → distribution automatique pondérée par coefficient de micro-zone → objectif final par DSM (éditable avec traçabilité).
         </p>
+        <p className="mt-1 text-xs text-amber-600">Objectif final retenu = valeur affichée ci-dessous. Badge <span className="inline-flex rounded bg-slate-100 px-1 font-semibold">AUTO</span> = issu de la distribution ; <span className="inline-flex rounded bg-amber-100 px-1 font-semibold text-amber-700">MANUEL</span> = écrasé manuellement (conserve valeur auto dans audit).</p>
       </div>
 
       {/* Period selector */}
@@ -193,9 +207,9 @@ export default function ObjectivesDistributionPage() {
       {/* Objectives table */}
       <div className="card overflow-hidden animate-fade-in stagger-3">
         <div className="card-header">
-          <h3 className="text-lg font-bold text-slate-900">Objectifs par DSM</h3>
+          <h3 className="text-lg font-bold text-slate-900">Objectifs par DSM — objectif final retenu</h3>
           <p className="text-xs text-slate-500">
-            Cliquez sur une valeur pour la modifier manuellement.
+            Cliquez sur une valeur pour la modifier manuellement (motif demandé, badge MANUEL, audit conservé).
           </p>
         </div>
         <div className="overflow-x-auto">
@@ -205,24 +219,27 @@ export default function ObjectivesDistributionPage() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">DSM</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Micro Zone</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Coefficient</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Obj. Création</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Obj. Revenus</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Obj. Création (final)</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Obj. Revenus 1ère recharge (final)</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Statut</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">Chargement…</td>
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">Chargement…</td>
                 </tr>
               ) : objectives.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">
-                    Aucun objectif distribué. Sélectionnez une période et cliquez « Distribuer automatiquement ».
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">
+                    Aucun objectif distribué. Sélectionnez une période et cliquez « Distribuer automatiquement ». Formule : objectif DSM = global × coef / Σcoef (arrondi, dernier DSM ajuste).
                   </td>
                 </tr>
               ) : (
                 <>
-                  {objectives.map((obj) => (
+                  {objectives.map((obj) => {
+                    const isManual = obj.updated_at && obj.created_at && new Date(obj.updated_at).getTime() - new Date(obj.created_at).getTime() > 1000;
+                    return (
                     <tr key={obj.id} className="table-row-hover transition-colors">
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
                         {obj.dsm_name || `DSM #${obj.dsm_id}`}
@@ -277,18 +294,23 @@ export default function ObjectivesDistributionPage() {
                           <button
                             onClick={() => handleEditStart(obj, 'revenue_objective')}
                             className="cursor-pointer rounded px-2 py-0.5 text-right tabular-nums hover:bg-blue-50"
-                            title="Cliquer pour modifier"
+                            title="Cliquer pour modifier — motif demandé"
                           >
                             {formatCurrency(obj.revenue_objective)}
                           </button>
                         )}
                       </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-center">
+                        {isManual ? <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700" title={obj.updated_at ? `Modifié le ${new Date(obj.updated_at).toLocaleString('fr-FR')}` : ''}>MANUEL</span> : <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">AUTO</span>}
+                      </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   <tr className="bg-slate-50 font-semibold">
-                    <td colSpan={3} className="px-4 py-3 text-right text-xs uppercase tracking-wider text-slate-500">Total distribué</td>
+                    <td colSpan={3} className="px-4 py-3 text-right text-xs uppercase tracking-wider text-slate-500">Total distribué (Σ objectifs finaux)</td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatInt(totalCreationObj)} POS</td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(totalRevenueObj)}</td>
+                    <td></td>
                   </tr>
                 </>
               )}

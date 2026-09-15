@@ -16,7 +16,7 @@ const LABELS = [
 ];
 
 const formatValue = (v) => {
-  if (v === null || v === undefined) return '—';
+  if (v === null || v === undefined) return 'Non défini';
   return `${Number(v).toLocaleString('fr-FR')}`;
 };
 

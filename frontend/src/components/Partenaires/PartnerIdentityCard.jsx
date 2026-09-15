@@ -116,7 +116,7 @@ export default function PartnerIdentityCard({ identity, loading = false }) {
         <Section title="Master SIM">
           <Field label="Master SIM prise en portefeuille" value={displayValue(identity?.master_sim_number)} />
           <Field label="Adresse" value={displayValue(identity?.address)} />
-          <Field label="Créé le" value={formatDate(identity?.created_at)} />
+          <Field label="Prise en portefeuille" value={formatDate(identity?.created_at)} />
         </Section>
 
         {/* Counters */}

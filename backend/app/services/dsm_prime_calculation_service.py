@@ -1,16 +1,15 @@
-"""dsm_prime_calculation_service : calcul automatique des primes DSM.
+"""dsm_prime_calculation_service : calcul officiel des primes DSM (source unique).
 
-Deux niveaux de prime independants mais additionnes :
-  PRIME TOTALE DSM = PRIME CREATION POS + PRIME REVENUS
+Regle officielle (Phase 3B, config.py) :
+  Objectif creation : 200 POS / mois
+  Objectif revenus premiere recharge : 500 000 FCFA / mois
+  Seuils : <75% -> 0% ; 75-<95% -> 0,1% ; >=95% -> 0,5%
+  Deux criteres doivent etre >=75% pour etre eligible.
+  Taux final = MIN(taux creation, taux revenus)
+  Prime = revenu_reel_qualifiant * taux_final /100
+  Exemple : 194/200=97%, 485000/500000=97% -> 0,5% -> 2425 FCFA
 
-Algorithme :
-  1. Recuperer les objectifs DSM pour la periode
-  2. Pour chaque DSM :
-     a. Compter les POS NOUVEAU crees (prime creation)
-     b. Calculer les revenus generes (prime revenus)
-     c. Appliquer les grilles configurables
-     d. Additionner les deux primes
-  3. Produire un resume global et par DSM
+Aucune PrimeGrid n'est lue. Aucune grille CREATION/REVENUE ne modifie la prime.
 """
 from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy.orm import Session
@@ -19,13 +18,10 @@ from sqlalchemy import func
 from app.core.errors import NotFoundError, ValidationErrorApp
 from app.models.pos import POS, TypePos
 from app.models.prime_period import PrimePeriod, StatutPeriode
-from app.models.prime import Prime, StatutPrime
 from app.models.dsm import DSM
 from app.models.dsm_commission import DSMCommission, StatutCommission
 from app.models.dsm_objective import DSMObjective
-from app.models.prime_grid import GridType
 from app.services import audit_service
-from app.services.prime_grid_service import get_active_grid, calculate_prime_amount
 from app.core.config import settings as settings_ref
 
 
@@ -108,14 +104,7 @@ def calculate_dsm_primes_for_period(
             "Repartissez d'abord les objectifs globaux."
         )
 
-    # Recuperer les grilles actives
-    creation_grid = get_active_grid(db, partner_id, GridType.CREATION.value)
-    revenue_grid = get_active_grid(db, partner_id, GridType.REVENUE.value)
-
-    if not creation_grid:
-        raise ValidationErrorApp("Aucune grille de prime CREATION active. Configurez une grille d'abord.")
-
-    # Calculer les primes pour chaque DSM
+    # Calculer les primes pour chaque DSM - aucune grille n'est lue
     commissions = []
     total_creation_prime = Decimal("0")
     total_revenue_prime = Decimal("0")
@@ -156,21 +145,10 @@ def calculate_dsm_primes_for_period(
         # 0 si non éligible.
         prime_rate = min(qty_rate, rev_rate) if eligible else Decimal("0")
 
-        # --- Prime création (grille CREATION active si configurée,
-        # sinon 0 — la règle de référence reste visible via prime_rate) ---
-        if creation_grid:
-            creation_prime = calculate_prime_amount(creation_grid, creation_pct)
-        else:
-            creation_prime = Decimal("0")
-
-        # --- Prime revenus : PRIME = TAUX × REVENUS ÉLIGIBLES ---
+        # --- Primes : creation fixe n'existe plus ; seule prime revenus selon regle officielle ---
+        creation_prime = Decimal("0")
         if eligible and prime_rate > 0:
-            if revenue_grid and revenue_pct > 0:
-                # Grille REVENUE personnalisée : son palier donne le taux.
-                grid_rate = calculate_prime_amount(revenue_grid, revenue_pct)
-                applied_rate = grid_rate if grid_rate > 0 else prime_rate
-            else:
-                applied_rate = prime_rate
+            applied_rate = prime_rate
             revenue_prime = (revenue_realized * applied_rate / Decimal("100")).quantize(
                 Decimal("0.01"), rounding=ROUND_HALF_UP
             )
@@ -178,8 +156,8 @@ def calculate_dsm_primes_for_period(
             applied_rate = Decimal("0")
             revenue_prime = Decimal("0")
 
-        # --- Prime totale ---
-        total_prime = creation_prime + revenue_prime
+        # --- Prime totale = prime revenus (creation =0) ---
+        total_prime = revenue_prime
 
         # Upsert dans dsm_commissions
         existing = db.query(DSMCommission).filter(

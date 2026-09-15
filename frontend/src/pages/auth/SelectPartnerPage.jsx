@@ -83,7 +83,7 @@ const SelectPartnerPage = () => {
 
   const handleConfirmSelection = () => {
     if (!selectedId) return;
-    navigate('/', { replace: true });
+    navigate('/dashboard', { replace: true });
   };
 
   const handleLogout = async () => {

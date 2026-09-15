@@ -1,4 +1,5 @@
-"""Schemas Pydantic pour les objectifs DSM et les grilles de primes."""
+"""Schemas Pydantic pour les objectifs DSM et les commissions DSM."""
+
 from datetime import date, datetime
 from decimal import Decimal
 from pydantic import BaseModel, ConfigDict
@@ -23,6 +24,7 @@ class DSMObjectiveOut(BaseModel):
     creation_objective: int
     revenue_objective: Decimal
     created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class DSMObjectiveUpdateRequest(BaseModel):
@@ -46,46 +48,6 @@ class DSMObjectivesSummaryOut(BaseModel):
     total_revenue_target: float
     dsm_count: int
     by_dsm: list[DSMObjectiveSummaryItem]
-
-
-# --- Grilles de primes ---
-
-class PrimeGridThresholdIn(BaseModel):
-    min_pct: Decimal
-    max_pct: Decimal | None = None
-    amount: Decimal
-
-
-class PrimeGridThresholdOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    min_pct: Decimal
-    max_pct: Decimal | None = None
-    amount: Decimal
-
-
-class PrimeGridCreate(BaseModel):
-    name: str
-    grid_type: str  # "CREATION" ou "REVENUE"
-    thresholds: list[PrimeGridThresholdIn]
-
-
-class PrimeGridUpdate(BaseModel):
-    name: str | None = None
-    thresholds: list[PrimeGridThresholdIn] | None = None
-
-
-class PrimeGridOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    partner_id: int
-    name: str
-    grid_type: str
-    is_active: bool
-    thresholds: list[PrimeGridThresholdOut] = []
-    created_at: datetime | None = None
 
 
 # --- Extension DSMCommission ---

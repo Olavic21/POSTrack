@@ -40,32 +40,22 @@ def test_bts_etat(db, seed):
 
 
 def test_prime_dsm_configurable(db, seed):
-    from app.models.prime_grid import PrimeGrid, GridType
-    from app.models.prime_grid_threshold import PrimeGridThreshold
-
-    grid = PrimeGrid(partner_id=seed["p1"], name="Test Grid", grid_type=GridType.CREATION, is_active=True)
-    db.add(grid)
-    db.flush()
-    t1 = PrimeGridThreshold(grid_id=grid.id, min_pct=75, max_pct=95, amount=1000)
-    t2 = PrimeGridThreshold(grid_id=grid.id, min_pct=95, max_pct=100, amount=2000)
-    db.add_all([t1, t2])
-    db.commit()
-    # Vérifier seuils configurables
-    assert grid.thresholds[0].min_pct == 75
-    assert grid.thresholds[1].amount == 2000
-    # Service prime DSM doit utiliser ces seuils (non hardcodé)
+    """Phase 2 : PrimeGrid supprime, seuils desormais uniquement config.py (75/95 -> 0.1/0.5)."""
+    from app.core.config import settings
+    assert settings.PRIME_THRESHOLD_LOW == 75.0
+    assert settings.PRIME_THRESHOLD_HIGH == 95.0
+    assert settings.PRIME_RATE_LOW == 0.1
+    assert settings.PRIME_RATE_HIGH == 0.5
     from app.services.dsm_prime_calculation_service import calculate_dsm_primes_for_period
     from app.models.prime_period import PrimePeriod, StatutPeriode
 
     period = PrimePeriod(partner_id=seed["p1"], code="T-PH1", label="Test", start_date=date.today() - timedelta(days=10), end_date=date.today() + timedelta(days=10), status=StatutPeriode.OPEN)
     db.add(period)
     db.commit()
-    # Créer objectif DSM requis
     from app.models.dsm_objective import DSMObjective
     dsm_obj = DSMObjective(partner_id=seed["p1"], dsm_id=seed["dsm1"], prime_period_id=period.id, month=date.today().replace(day=1), creation_objective=10, revenue_objective=100000)
     db.add(dsm_obj)
     db.commit()
-    # Calcul ne doit pas planter même si seuils 75-95
     result = calculate_dsm_primes_for_period(db, partner_id=seed["p1"], user_id=seed["admin_id"], prime_period_id=period.id)
     assert "commissions" in result
 

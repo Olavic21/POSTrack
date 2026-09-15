@@ -85,35 +85,8 @@ def _make_pos(db: Session, partner_id, dsm_id, suffix, month=1,
 
 
 def _ensure_creation_grid(db: Session, partner_id: int):
-    """Crée une grille CREATION active à 0 (nécessaire au calcul)."""
-    from app.models.prime_grid import PrimeGrid, GridType
-    from app.models.prime_grid_threshold import PrimeGridThreshold
-
-    existing = db.query(PrimeGrid).filter(
-        PrimeGrid.partner_id == partner_id,
-        PrimeGrid.grid_type == GridType.CREATION,
-        PrimeGrid.is_active == True,
-    ).first()
-    if existing:
-        return
-
-    grid = PrimeGrid(
-        partner_id=partner_id, name="CREATION Test Grid",
-        grid_type=GridType.CREATION, is_active=True,
-    )
-    db.add(grid)
-    db.commit()
-    db.flush()
-
-    thresholds = [
-        PrimeGridThreshold(grid_id=grid.id, min_pct=Decimal("0"), max_pct=Decimal("40"), amount=Decimal("0")),
-        PrimeGridThreshold(grid_id=grid.id, min_pct=Decimal("40"), max_pct=Decimal("60"), amount=Decimal("0")),
-        PrimeGridThreshold(grid_id=grid.id, min_pct=Decimal("60"), max_pct=Decimal("80"), amount=Decimal("0")),
-        PrimeGridThreshold(grid_id=grid.id, min_pct=Decimal("80"), max_pct=Decimal("100"), amount=Decimal("0")),
-        PrimeGridThreshold(grid_id=grid.id, min_pct=Decimal("100"), max_pct=None, amount=Decimal("0")),
-    ]
-    db.add_all(thresholds)
-    db.commit()
+    """Phase 2 : plus de PrimeGrid — le moteur officiel n'en a plus besoin. No-op conserve."""
+    return
 
 
 def _calc_primes(client, partner_id, period_id, token_username="t_admin"):

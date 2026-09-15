@@ -82,10 +82,11 @@ export default function PartnerPrimesDashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div className="animate-fade-in">
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Primes DSM</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Primes DSM — règle officielle</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Calcul automatique des primes création + revenus pour chaque DSM.
+          Une seule règle : 200 POS et 500 000 FCFA de revenus 1ère recharge par DSM/mois. Seuils ≥75% → 0,1% ; ≥95% → 0,5%. Deux critères requis, taux final = MIN(taux POS, taux revenus), prime = revenus réels × taux /100. Exemple 194 POS + 485 000 FCFA → 2 425 FCFA.
         </p>
+        <p className="mt-1 text-xs text-slate-400">Source unique : DSMCommission (moteur 3B). Prime création fixe supprimée. Revenus = 1ère recharge (sim_balance), ≠ loading (POSPerformance).</p>
       </div>
 
       {/* Period selector + filters */}
@@ -144,33 +145,33 @@ export default function PartnerPrimesDashboard() {
         )}
       </div>
 
-      {/* KPI Summary */}
+      {/* KPI Summary — niveaux explicites */}
       {summary && (
         <>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 animate-fade-in stagger-2">
           <StatCard
-            label="Prime Création"
-            value={formatCurrency(summary.total_creation_prime)}
-            loading={loading}
-            accent="indigo"
-            subtitle={`${formatPct(summary.global_creation_achievement_pct)} d'atteinte`}
-          />
-          <StatCard
-            label="Prime Revenus"
+            label="Prime Revenus 1ère recharge (total partenaire)"
             value={formatCurrency(summary.total_revenue_prime)}
             loading={loading}
             accent="green"
-            subtitle={`${formatPct(summary.global_revenue_achievement_pct)} d'atteinte`}
+            subtitle={`${formatPct(summary.global_revenue_achievement_pct)} d'atteinte — taux officiel 0,1/0,5%`}
           />
           <StatCard
-            label="Prime Totale"
+            label="Prime création (historique, toujours 0)"
+            value={formatCurrency(summary.total_creation_prime)}
+            loading={loading}
+            accent="indigo"
+            subtitle={`${formatPct(summary.global_creation_achievement_pct)} d'atteinte — ne génère plus de montant fixe`}
+          />
+          <StatCard
+            label="Prime Totale DSM (partenaire)"
             value={formatCurrency(summary.total_prime)}
             loading={loading}
             accent="amber"
-            subtitle={`${summary.dsm_count} DSM`}
+            subtitle={`${summary.dsm_count} DSM — période ${selectedPeriod?.code ?? ''}`}
           />
           <StatCard
-            label="DSM primés"
+            label="DSM éligibles (2 critères ≥75%)"
             value={summary.dsm_count}
             loading={loading}
             accent="sky"
@@ -181,14 +182,14 @@ export default function PartnerPrimesDashboard() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 animate-fade-in stagger-3">
           <div className="card overflow-hidden border-l-[3px] border-l-indigo-500">
             <div className="p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#0176d3]">Performance Création</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#0176d3]">PARTENAIRE — Performance création POS</p>
               <div className="mt-3 space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Objectif global</span>
+                  <span className="text-slate-600">Objectif global partenaire</span>
                   <span className="font-semibold">{formatInt(summary.global_creation_target)} POS</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Réalisé</span>
+                  <span className="text-slate-600">Réalisé partenaire (Σ DSM)</span>
                   <span className="font-semibold">{formatInt(summary.global_creation_realized)} POS</span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -200,7 +201,7 @@ export default function PartnerPrimesDashboard() {
           </div>
           <div className="card overflow-hidden border-l-[3px] border-l-emerald-500">
             <div className="p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2e844a]">Performance Revenus</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2e844a]">PARTENAIRE — Performance revenus 1ère recharge</p>
               <div className="mt-3 space-y-1">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Objectif global</span>

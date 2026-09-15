@@ -8,16 +8,15 @@ import { AuthProvider } from './context/AuthContext'
 import { PartnerProvider } from './context/PartnerContext'
 import { NavLevelProvider } from './context/NavLevelContext'
 import { ROLE_GROUPS } from './utils/constants'
+import { Navigate } from 'react-router-dom'
 
 // Lazy load all pages for code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard'))
-const PartnerHomePage = lazy(() => import('./pages/PartnerHomePage'))
 const POSListPage = lazy(() => import('./pages/pos/POSListPage'))
 const POSDetailPage = lazy(() => import('./pages/pos/POSDetailPage'))
 const POSEditPage = lazy(() => import('./pages/pos/POSEditPage'))
 const POSCreatePage = lazy(() => import('./pages/pos/POSCreatePage'))
 const PartnersList = lazy(() => import('./pages/PartnersList'))
-const PrimesListPage = lazy(() => import('./pages/PrimesListPage'))
 const BTSListPage = lazy(() => import('./pages/bts/BTSListPage'))
 const BTSCreatePage = lazy(() => import('./pages/bts/BTSCreatePage'))
 const BTSDetailPage = lazy(() => import('./pages/bts/BTSDetailPage'))
@@ -40,12 +39,11 @@ const SuiviQuotidienPage = lazy(() => import('./pages/tracking/SuiviQuotidienPag
 const AuditLogsPage = lazy(() => import('./pages/audit/AuditLogsPage'))
 const SalesTargetsPage = lazy(() => import('./pages/analytics/SalesTargetsPage'))
 const PartenaireCreatePage = lazy(() => import('./pages/partenaires/PartenaireCreatePage'))
-const PrimeCreatePage = lazy(() => import('./pages/primes/PrimeCreatePage'))
 const PartnerPrimesDashboard = lazy(() => import('./pages/primes/PartnerPrimesDashboard'))
-const PrimeGridsPage = lazy(() => import('./pages/primes/PrimeGridsPage'))
 const ObjectivesDistributionPage = lazy(() => import('./pages/primes/ObjectivesDistributionPage'))
 const PartnerPOSPage = lazy(() => import('./pages/partners/PartnerPOSPage'))
 const UsersPage = lazy(() => import('./pages/admin/UsersPage'))
+const GeolocalisationPage = lazy(() => import('./pages/GeolocalisationPage'))
 
 function App() {
   return (
@@ -70,14 +68,15 @@ function App() {
               </PartnerRoute>
             }
           >
-            <Route index element={
-              <Suspense fallback={<LoadingSpinner />}>
-                <PartnerHomePage />
-              </Suspense>
-            } />
+            <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={
               <Suspense fallback={<LoadingSpinner />}>
                 <Dashboard />
+              </Suspense>
+            } />
+            <Route path="geolocalisation" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <GeolocalisationPage />
               </Suspense>
             } />
             <Route path="unauthorized" element={
@@ -153,17 +152,7 @@ function App() {
               element={
                 <RoleGuard roles={ROLE_GROUPS.PARTNER_PORTFOLIO}>
                   <Suspense fallback={<LoadingSpinner />}>
-                    <PrimesListPage />
-                  </Suspense>
-                </RoleGuard>
-              }
-            />
-            <Route
-              path="primes/new"
-              element={
-                <RoleGuard roles={ROLE_GROUPS.PARTNER_PORTFOLIO}>
-                  <Suspense fallback={<LoadingSpinner />}>
-                    <PrimeCreatePage />
+                    <PartnerPrimesDashboard />
                   </Suspense>
                 </RoleGuard>
               }
@@ -174,16 +163,6 @@ function App() {
                 <RoleGuard roles={ROLE_GROUPS.PARTNER_PORTFOLIO}>
                   <Suspense fallback={<LoadingSpinner />}>
                     <PartnerPrimesDashboard />
-                  </Suspense>
-                </RoleGuard>
-              }
-            />
-            <Route
-              path="primes/grids"
-              element={
-                <RoleGuard roles={ROLE_GROUPS.ADMIN_ONLY}>
-                  <Suspense fallback={<LoadingSpinner />}>
-                    <PrimeGridsPage />
                   </Suspense>
                 </RoleGuard>
               }

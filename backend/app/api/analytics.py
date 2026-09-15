@@ -64,12 +64,12 @@ def monthly_table(partner_id: int = Depends(get_partner_context), db: Session = 
 
 
 @router.get("/sales-targets", response_model=list[PartnerSalesTargetOut])
-def sales_targets_list(partner_id: int = Depends(get_partner_context), db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+def sales_targets_list(partner_id: int = Depends(get_partner_context), db: Session = Depends(get_db), _user: User = Depends(require_roles(Role.ADMIN))):
     return list_sales_targets(db, partner_id)
 
 
 @router.post("/sales-targets", response_model=PartnerSalesTargetOut, status_code=201)
-def sales_targets_upsert(payload: PartnerSalesTargetCreate, partner_id: int = Depends(get_partner_context), db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+def sales_targets_upsert(payload: PartnerSalesTargetCreate, partner_id: int = Depends(get_partner_context), db: Session = Depends(get_db), _user: User = Depends(require_roles(Role.ADMIN))):
     return create_or_update_sales_target(db, partner_id=partner_id, payload=payload.model_dump())
 
 
@@ -160,14 +160,14 @@ def tracking_daily(partner_id: int = Depends(get_partner_context), dsm_id: int |
     return get_daily_tracking(db, partner_id, dsm_id, d)
 
 
-@router.get("/primes/summary")
+@router.get("/primes/summary", deprecated=True)
 def prime_summary(
     partner_id: int = Depends(get_partner_context),
     period_id: int = Query(...),
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
 ):
-    """Résumé partenaire des primes DSM (source : DSMCommission calculé) — par période."""
+    """Endpoint déprécié /analytics/primes/summary -> utiliser /primes/dsm-summary (canonique)."""
     return get_dsm_prime_summary(db, partner_id, period_id)
 
 
