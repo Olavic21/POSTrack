@@ -18,7 +18,7 @@ export const analyticsService = {
   getBtsProduction: (partnerId) => api.get(`/partners/${partnerId}/analytics/bts-production`, { skipPartnerPrefix: true }),
   getBtsEtat: (partnerId) => api.get(`/partners/${partnerId}/analytics/bts-etat`, { skipPartnerPrefix: true }),
   getSimLinkage: (partnerId) => api.get(`/partners/${partnerId}/analytics/sim-linkage`, { skipPartnerPrefix: true }),
-  getDsmProductionFinanciere: (partnerId, dsmId) => api.get(`/partners/${partnerId}/analytics/dsm/${dsmId}/production-financiere`, { skipPartnerPrefix: true }),
+  getDsmProductionFinanciere: (partnerId, dsmId, params) => api.get(`/partners/${partnerId}/analytics/dsm/${dsmId}/production-financiere`, { params, skipPartnerPrefix: true }),
 
   // --- Phase 1 : suivi quotidien & table des ventes ---
   getDailyTracking: (partnerId, params) => api.get(`/partners/${partnerId}/analytics/tracking/daily`, { params, skipPartnerPrefix: true }),

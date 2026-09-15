@@ -112,9 +112,11 @@ export default function PartenairesListPage() {
     }
   }, [])
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     void fetchPartenaires()
   }, [fetchPartenaires])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const filtered = useMemo(() => {
     const needle = toSafeLower(searchTerm)
@@ -135,9 +137,11 @@ export default function PartenairesListPage() {
     [filtered, page],
   )
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setPage(1)
   }, [searchTerm, statusFilter])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const resetFilters = () => {
     setSearchTerm('')

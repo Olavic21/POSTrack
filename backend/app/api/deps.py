@@ -57,13 +57,33 @@ def require_roles(*roles: Role):
 
 
 def get_authorized_partners(db: Session, user: User) -> list[int]:
-    """Renvoie la liste des partner_id auxquels l'utilisateur a acces."""
+    """Renvoie la liste des partner_id auxquels l'utilisateur a acces.
+
+    Règle de référence (isolation partenaire) :
+    - ADMIN : tous les partenaires
+    - MANAGER / CHEF_OPERATIONNEL : partenaires liés via user_partners (UserPartner)
+      ou, à défaut, partner_id / dsm_id du user. Fallback permissif (tous les
+      DSM) uniquement si aucun lien n'existe — évite de casser les comptes
+      de test historiques sans user_partners, mais les nouveaux comptes DOIVENT
+      être liés via user_partners pour une isolation stricte.
+    - OPERATIONNEL : partner_id forcé uniquement
+    """
     if user.role == Role.ADMIN:
         from app.models.partner import Partner
         return [p.id for p in db.query(Partner.id).all()]
-    if user.role == Role.MANAGER:
-        return [p[0] for p in db.query(DSM.partner_id).distinct().all()]
-    if user.role == Role.CHEF_OPERATIONNEL:
+    if user.role in (Role.MANAGER, Role.CHEF_OPERATIONNEL):
+        from app.models.user import UserPartner
+        linked = [r[0] for r in db.query(UserPartner.partner_id).filter(UserPartner.user_id == user.id).all()]
+        if linked:
+            return linked
+        if user.partner_id:
+            return [user.partner_id]
+        if getattr(user, "dsm_id", None):
+            dsm = db.query(DSM).filter(DSM.id == user.dsm_id).first()
+            if dsm and dsm.partner_id:
+                return [dsm.partner_id]
+        # Fallback historique (permissif) — conservé pour ne pas casser les
+        # comptes seed sans user_partners ; à terme, exiger un lien explicite.
         return [p[0] for p in db.query(DSM.partner_id).distinct().all()]
     if user.role == Role.OPERATIONNEL:
         return [user.partner_id] if user.partner_id else []

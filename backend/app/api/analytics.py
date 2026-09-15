@@ -110,9 +110,15 @@ def bts_etat(partner_id: int = Depends(get_partner_context), db: Session = Depen
 
 
 @router.get("/dsm/{dsm_id}/production-financiere")
-def dsm_production_financiere(dsm_id: int, partner_id: int = Depends(get_partner_context), db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    """Production financière DSM = sum(sim_balance + montant premières recharges)."""
-    return get_dsm_production_financiere(db, partner_id, dsm_id)
+def dsm_production_financiere(
+    dsm_id: int,
+    partner_id: int = Depends(get_partner_context),
+    db: Session = Depends(get_db),
+    prime_period_id: int | None = None,
+    _user: User = Depends(get_current_user),
+):
+    """Production financière DSM = sum(sim_balance + montant premières recharges). Filtre optionnel par période."""
+    return get_dsm_production_financiere(db, partner_id, dsm_id, prime_period_id)
 
 
 @router.get("/sim-linkage")

@@ -70,6 +70,21 @@ def get_dashboard(db: Session, partner_id: int) -> dict:
         Prime.status.in_([StatutPrime.VALIDEE, StatutPrime.PAYEE]),
     ).scalar() or 0
 
+    # Montant DSM 3B (source de vérité) : total des DSMCommission ELIGIBLE/NON_ELIGIBLE
+    # pour la période OPEN la plus récente. Exposé en plus de l'ancien montant_primes
+    # (legacy Prime) pour que le Dashboard affiche la valeur 3B sans casser la compat.
+    montant_primes_dsm = 0
+    try:
+        from app.models.dsm_commission import DSMCommission as _DSMCom
+        from app.models.prime_period import PrimePeriod as _PP, StatutPeriode as _SP
+        _open = db.query(_PP).filter(_PP.partner_id == partner_id, _PP.status == _SP.OPEN).order_by(_PP.start_date.desc()).first()
+        if _open:
+            montant_primes_dsm = db.query(func.coalesce(func.sum(_DSMCom.total_prime_amount), 0)).filter(
+                _DSMCom.partner_id == partner_id, _DSMCom.prime_period_id == _open.id
+            ).scalar() or 0
+    except Exception:
+        pass
+
     # Requetes ouvertes : derive des compteurs de traitement plutoit qu'un
     # StatutRequete (retire). Une requete est "ouverte" tant qu'il reste
     # des demandes non traitees (effectue + rejete < demande).
@@ -157,6 +172,7 @@ def get_dashboard(db: Session, partner_id: int) -> dict:
         "primes_en_attente": primes_en_attente,
         "primes_validees": primes_validees,
         "montant_primes_periode": montant_primes,
+        "montant_primes_dsm": float(montant_primes_dsm) if montant_primes_dsm else 0,
         "requetes_ouvertes": requetes_ouvertes,
         "requetes_total": requetes_total,
         "requetes_terminees": requetes_terminees,
@@ -806,18 +822,35 @@ def get_bts_production(db: Session, partner_id: int) -> dict:
     }
 
 
-def get_dsm_production_financiere(db: Session, partner_id: int, dsm_id: int) -> dict:
+def get_dsm_production_financiere(
+    db: Session, partner_id: int, dsm_id: int, prime_period_id: int | None = None,
+) -> dict:
     """Production financière DSM = somme sim_balance (STOCK ODI/CESCO) + montant premières recharges (Master Color).
     Source : POS.sim_balance (ODI/CESCO) + POS.donnees_additionnelles.montant_initial (Master Color).
+    Si prime_period_id est fourni, filtre par période métier (date_creation dans [start_date, end_date]).
+    Ne crée pas de second moteur : réutilise la même source que dsm_prime_calculation_service.
     """
-    pos_list = db.query(POS).filter(POS.partner_id == partner_id, POS.dsm_id == dsm_id).all()
+    q = db.query(POS).filter(POS.partner_id == partner_id, POS.dsm_id == dsm_id)
+    period_info = None
+    if prime_period_id is not None:
+        from app.models.prime_period import PrimePeriod
+        period = db.query(PrimePeriod).filter(PrimePeriod.id == prime_period_id, PrimePeriod.partner_id == partner_id).first()
+        if period:
+            q = q.filter(POS.date_creation >= period.start_date, POS.date_creation <= period.end_date)
+            period_info = {"prime_period_id": period.id, "period_code": period.code, "start_date": period.start_date.isoformat(), "end_date": period.end_date.isoformat()}
+    pos_list = q.all()
     total = 0.0
     for p in pos_list:
         if p.sim_balance is not None:
             total += float(p.sim_balance)
         elif p.donnees_additionnelles and isinstance(p.donnees_additionnelles, dict):
             total += float(p.donnees_additionnelles.get("montant_initial", 0) or 0)
-    return {"dsm_id": dsm_id, "partner_id": partner_id, "production_financiere": total, "nombre_pos": len(pos_list), "source": "POS.sim_balance + donnees_additionnelles.montant_initial"}
+    result = {"dsm_id": dsm_id, "partner_id": partner_id, "production_financiere": total, "nombre_pos": len(pos_list), "source": "POS.sim_balance + donnees_additionnelles.montant_initial"}
+    if period_info:
+        result["period"] = period_info
+    if prime_period_id is not None and not period_info:
+        result["warning"] = f"prime_period_id={prime_period_id} introuvable pour ce partenaire — total global retourné"
+    return result
 
 
 # --- BTS état ---
@@ -891,28 +924,55 @@ def get_kpi_objectives(db: Session, partner_id: int, month: date | None = None, 
 
 
 def get_kpi_realisations(db: Session, partner_id: int, month: date | None = None, dsm_id: int | None = None) -> dict:
-    """Réalisations KPI calculées depuis données réelles (POS/SIM/POSPerformance)."""
+    """Réalisations KPI calculées depuis données réelles (POS/SIM/POSPerformance).
+
+    Tous les compteurs sont bornés au mois demandé (month = premier jour du mois) :
+    - création/reconduction : POS dont date_creation dans le mois
+    - sell-out/loading : SIM dont created_at dans le mois (flux mensuel, pas cumul global)
+    - revenus : somme POSPerformance.revenue dont period_start dans le mois
+    """
+    from datetime import datetime, timedelta as _td
+    from calendar import monthrange as _monthrange
+
     if month is None:
         month = date.today().replace(day=1)
     else:
         month = month.replace(day=1)
+    # Bornes du mois en date et datetime
+    _last_day = _monthrange(month.year, month.month)[1]
+    month_end = date(month.year, month.month, _last_day)
+    month_start_dt = datetime(month.year, month.month, 1)
+    month_end_dt = datetime(month.year, month.month, _last_day, 23, 59, 59)
+
     # Création / reconduction
     q = db.query(POS).filter(POS.partner_id == partner_id)
     if dsm_id:
         q = q.filter(POS.dsm_id == dsm_id)
-    # Filtrer par mois de création
     pos_list = q.all()
-    # Pour simplifier, cumul mensuel = POS dont date_creation dans le mois
     creation = sum(1 for p in pos_list if p.date_creation.year == month.year and p.date_creation.month == month.month and p.type_pos == TypePos.NOUVEAU)
     reconduction = sum(1 for p in pos_list if p.date_creation.year == month.year and p.date_creation.month == month.month and p.type_pos == TypePos.RECONDUIT)
-    # sell-out / loading via SIM
+
+    # sell-out / loading via SIM — filtrés par created_at dans le mois
     sim_q = db.query(SIM).filter(SIM.partner_id == partner_id)
     if dsm_id:
         sim_q = sim_q.join(POS, SIM.pos_id == POS.id).filter(POS.dsm_id == dsm_id)
-    sell_out = sim_q.filter(SIM.status.in_([StatutSim.ASSIGNEE, StatutSim.ACTIVE])).count()
-    loading = sim_q.filter(SIM.status == StatutSim.EN_STOCK).count()
-    # revenus via POSPerformance.revenue
-    perf_q = db.query(func.coalesce(func.sum(POSPerformance.revenue), 0)).join(POS, POSPerformance.pos_id == POS.id).filter(POS.partner_id == partner_id)
+    # Filtre temporel sur SIM.created_at
+    sell_out = sim_q.filter(
+        SIM.status.in_([StatutSim.ASSIGNEE, StatutSim.ACTIVE]),
+        SIM.created_at >= month_start_dt,
+        SIM.created_at <= month_end_dt,
+    ).count()
+    loading = db.query(SIM).filter(SIM.partner_id == partner_id, SIM.status == StatutSim.EN_STOCK, SIM.created_at >= month_start_dt, SIM.created_at <= month_end_dt)
+    if dsm_id:
+        loading = loading.join(POS, SIM.pos_id == POS.id).filter(POS.dsm_id == dsm_id)
+    loading = loading.count()
+
+    # revenus via POSPerformance.revenue — filtrés par period_start dans le mois
+    perf_q = db.query(func.coalesce(func.sum(POSPerformance.revenue), 0)).join(POS, POSPerformance.pos_id == POS.id).filter(
+        POS.partner_id == partner_id,
+        POSPerformance.period_start >= month,
+        POSPerformance.period_start <= month_end,
+    )
     if dsm_id:
         perf_q = perf_q.filter(POS.dsm_id == dsm_id)
     revenus = float(perf_q.scalar() or 0)
@@ -938,22 +998,107 @@ def get_kpi_realisations(db: Session, partner_id: int, month: date | None = None
 
 
 def get_kpi_dsm_both_criteria(db: Session, partner_id: int, month: date | None = None) -> dict:
-    """Nombre de DSM ayant simultanément atteint critères quantité (POS créés) et montant (revenus)."""
+    """Nombre de DSM ayant simultanément atteint critères quantité (POS créés) et montant (revenus).
+
+    Aligné sur le moteur de référence dsm_prime_calculation_service :
+    - source objectifs = DSMObjective (lié à PrimePeriod), pas PartnerSalesTarget
+    - seuil = PRIME_THRESHOLD_LOW (75 %) configurable, pas 100 %
+    - réalisation = POS NOUVEAU dans la période + revenus premières recharges (sim_balance) dans la période
+    - both = qty_pct >=75 ET rev_pct >=75
+    """
+    from app.models.dsm_objective import DSMObjective
+    from app.models.prime_period import PrimePeriod
+    from app.models.pos import POS as _POS, TypePos as _TypePos
+
     if month is None:
         month = date.today().replace(day=1)
+    else:
+        month = month.replace(day=1)
+
+    # Période métier correspondant au mois (si existante)
+    period = db.query(PrimePeriod).filter(
+        PrimePeriod.partner_id == partner_id,
+        PrimePeriod.start_date == month,
+    ).first()
+
     dsm_list = db.query(DSM).filter(DSM.partner_id == partner_id).all()
     count = 0
     details = []
+    threshold = float(settings.PRIME_THRESHOLD_LOW)
+
+    # Objectifs par DSM pour la période (si période existe) sinon par month
+    obj_by_dsm: dict[int, DSMObjective] = {}
+    if period:
+        for o in db.query(DSMObjective).filter(
+            DSMObjective.partner_id == partner_id,
+            DSMObjective.prime_period_id == period.id,
+        ).all():
+            obj_by_dsm[o.dsm_id] = o
+    else:
+        for o in db.query(DSMObjective).filter(
+            DSMObjective.partner_id == partner_id,
+            DSMObjective.month == month,
+        ).all():
+            obj_by_dsm[o.dsm_id] = o
+
     for dsm in dsm_list:
-        obj = get_kpi_objectives(db, partner_id, month, dsm.id)["objectifs"]
-        real = get_kpi_realisations(db, partner_id, month, dsm.id)
-        qty_ok = obj["creation_pos"] is not None and real["realisations"]["creation_pos"] >= obj["creation_pos"]
-        amt_ok = obj["revenus"] is not None and real["realisations"]["revenus"] >= obj["revenus"]
-        both = qty_ok and amt_ok
+        obj = obj_by_dsm.get(dsm.id)
+        creation_obj = obj.creation_objective if obj else None
+        revenue_obj = float(obj.revenue_objective) if obj and obj.revenue_objective is not None else None
+
+        # Réalisation quantité : POS NOUVEAU créés dans la période (ou dans le mois si pas de période)
+        if period:
+            qty_real = db.query(func.count(_POS.id)).filter(
+                _POS.partner_id == partner_id,
+                _POS.dsm_id == dsm.id,
+                _POS.type_pos == _TypePos.NOUVEAU,
+                _POS.date_creation >= period.start_date,
+                _POS.date_creation <= period.end_date,
+            ).scalar() or 0
+            # Revenus éligibles : somme sim_balance + montant_initial des POS du DSM dans la période
+            pos_q = db.query(_POS).filter(
+                _POS.partner_id == partner_id,
+                _POS.dsm_id == dsm.id,
+                _POS.date_creation >= period.start_date,
+                _POS.date_creation <= period.end_date,
+            ).all()
+        else:
+            # Fallback mois calendaire (sans PrimePeriod)
+            all_pos = db.query(_POS).filter(_POS.partner_id == partner_id, _POS.dsm_id == dsm.id).all()
+            qty_real = sum(1 for p in all_pos if p.type_pos == _TypePos.NOUVEAU and p.date_creation.year == month.year and p.date_creation.month == month.month)
+            pos_q = [p for p in all_pos if p.date_creation.year == month.year and p.date_creation.month == month.month]
+
+        revenue_real = 0.0
+        for p in pos_q:
+            if p.sim_balance is not None:
+                revenue_real += float(p.sim_balance)
+            elif p.donnees_additionnelles and isinstance(p.donnees_additionnelles, dict):
+                revenue_real += float(p.donnees_additionnelles.get("montant_initial", 0) or 0)
+
+        if creation_obj and creation_obj > 0:
+            qty_pct = float(qty_real) / float(creation_obj) * 100.0
+        else:
+            qty_pct = 0.0
+        if revenue_obj and revenue_obj > 0:
+            rev_pct = float(revenue_real) / float(revenue_obj) * 100.0 if revenue_obj else 0.0
+        else:
+            rev_pct = 0.0
+
+        qty_ok = creation_obj is not None and qty_pct >= threshold
+        amt_ok = revenue_obj is not None and rev_pct >= threshold
+        both = bool(qty_ok and amt_ok)
         if both:
             count += 1
-        details.append({"dsm_id": dsm.id, "matricule": dsm.matricule, "qty_ok": qty_ok, "amt_ok": amt_ok, "both": both})
-    return {"partner_id": partner_id, "month": month.isoformat(), "dsm_both_criteria": count, "total_dsm": len(dsm_list), "details": details}
+        details.append({
+            "dsm_id": dsm.id,
+            "matricule": dsm.matricule,
+            "qty_ok": qty_ok,
+            "amt_ok": amt_ok,
+            "both": both,
+            "qty_pct": round(qty_pct, 1),
+            "amt_pct": round(rev_pct, 1),
+        })
+    return {"partner_id": partner_id, "month": month.isoformat(), "dsm_both_criteria": count, "total_dsm": len(dsm_list), "details": details, "threshold": threshold}
 
 
 # --- Suivi quotidien ---

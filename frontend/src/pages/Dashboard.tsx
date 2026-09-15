@@ -25,6 +25,7 @@ type Stats = {
   primes_en_attente?: number
   primes_validees?: number
   montant_primes_periode?: string | number
+  montant_primes_dsm?: string | number
   requetes_ouvertes?: number
   requetes_total?: number
   requetes_terminees?: number
@@ -186,6 +187,7 @@ function Dashboard() {
 
   // Résumé primes DSM (Création / Revenus) sur la période OPEN — réutilise
   // le service et la logique de PartnerPrimesDashboard (aucun calcul frontend).
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!partnerContextId) {
       setPrimeSummary(null)
@@ -211,6 +213,7 @@ function Dashboard() {
     void load()
     return () => { ignore = true }
   }, [partnerContextId])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const simStats = useMemo(() => {
     // Source de vérité : GET /analytics/sim-linkage (backend).
@@ -345,20 +348,23 @@ function Dashboard() {
         <PrimeDsmCard loading={loading} stats={stats} kpi={kpiBoth} />
       </div>
 
-      {/* ── Montant prime ── */}
+      {/* ── Montant prime — source 3B prioritaire (DSMCommission), fallback legacy Prime ── */}
       <div className="card overflow-hidden animate-fade-in">
         <div className="p-4">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-[#dd7a01]">Montant prime</p>
           <div className="mt-3 flex flex-wrap items-center gap-x-10 gap-y-2">
             <div>
-              <p className="text-xs text-slate-500">Total période</p>
-              <p className="text-lg font-bold text-slate-900">{loading ? '…' : stats?.montant_primes_periode ? `${Number(stats.montant_primes_periode).toLocaleString('fr-FR')} FCFA` : '0 FCFA'}</p>
+              <p className="text-xs text-slate-500">Total période {stats?.montant_primes_dsm ? '(DSM 3B)' : ''}</p>
+              <p className="text-lg font-bold text-slate-900">{loading ? '…' : (stats?.montant_primes_dsm ?? stats?.montant_primes_periode) ? `${Number(stats?.montant_primes_dsm ?? stats?.montant_primes_periode).toLocaleString('fr-FR')} FCFA` : '0 FCFA'}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500">Primes validées / en attente</p>
               <p className="text-lg font-bold text-slate-900">{loading ? '…' : `${(stats?.primes_validees ?? 0)} / ${(stats?.primes_en_attente ?? 0)}`}</p>
             </div>
           </div>
+          {stats?.montant_primes_dsm != null && stats?.montant_primes_dsm !== stats?.montant_primes_periode ? (
+            <p className="mt-2 text-[11px] text-slate-400">Legacy Prime (VALIDÉE/PAYÉE) : {Number(stats?.montant_primes_periode ?? 0).toLocaleString('fr-FR')} FCFA</p>
+          ) : null}
         </div>
       </div>
 
@@ -414,11 +420,12 @@ function Dashboard() {
         </div>
         <div className="card overflow-hidden border-l-[3px] border-l-emerald-500">
           <div className="p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2e844a]">Prime reconduction</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2e844a]">Prime revenus</p>
             <div className="mt-3">
               <p className="text-sm text-slate-600">{primeSummary?.total_revenue_prime != null
-                ? `Montant primes revenus : ${Number(primeSummary.total_revenue_prime).toLocaleString('fr-FR')} FCFA`
-                : "Aucune donnée de prime sur période ouverte. Le modèle backend exprime les primes des DSM via les grilles CREATION / REVENUE — une 'prime de reconduction' distincte n'est pas encore modélisée (POS reconduit non primé : règle backend actuelle)."}</p>
+                ? `${Number(primeSummary.total_revenue_prime).toLocaleString('fr-FR')} FCFA`
+                : "Aucune donnée de prime sur période ouverte. Le modèle métier distingue Prime création (grille CREATION) et Prime revenus (grille REVENUE / taux × revenus réels) — aucune 'prime de reconduction' distincte n'est modélisée (POS RECONDUIT non primé, règle backend actuelle)."}</p>
+              <p className="mt-1 text-[11px] text-slate-400">Source : DSMCommission.total_revenue_prime (moteur 3B)</p>
             </div>
           </div>
         </div>
@@ -618,11 +625,6 @@ function Dashboard() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* ── Prime DSM (Phase 2 : critères quantité / montant évalués par le backend) ── */}
-      <div className="animate-fade-in">
-        <PrimeDsmCard loading={loading} stats={stats} kpi={kpiBoth} />
       </div>
 
       {/* ── Graphiques analytiques ── */}

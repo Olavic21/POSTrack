@@ -275,10 +275,11 @@ const PrimeDsmCard = ({ loading, stats, kpi }) => {
     setPrimeDetail(null);
     setDetailError(null);
     if (!id) return;
-    // production financière
+    // production financière — filtrée par période ouverte si disponible
     try {
       setProdLoading(true);
-      const res = await analyticsService.getDsmProductionFinanciere(partnerContextId, Number(id));
+      const params = openPeriodId ? { prime_period_id: openPeriodId } : undefined;
+      const res = await analyticsService.getDsmProductionFinanciere(partnerContextId, Number(id), params);
       setProdFin(res.data ?? null);
     } catch {
       setProdError('Production financière indisponible pour ce DSM.');

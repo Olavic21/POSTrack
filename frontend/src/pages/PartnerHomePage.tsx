@@ -186,7 +186,7 @@ export default function PartnerHomePage() {
         </div>
         <div className="border-t border-slate-100 p-1">
           {partnerContextId && (
-            <TerritoryMap partnerId={partnerContextId} onSelect={(bts: any) => console.log('BTS sélectionné:', bts)} />
+            <TerritoryMap partnerId={partnerContextId} onSelect={(bts: unknown) => console.log('BTS sélectionné:', bts)} />
           )}
         </div>
       </div>

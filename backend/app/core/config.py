@@ -3,7 +3,16 @@ Configuration centrale de l'application, chargee depuis les variables
 d'environnement (.env). Toute constante partagee par plusieurs modules
 doit etre ajoutee ici plutot que dupliquee.
 """
+from pathlib import Path
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Base absolue = dossier backend/ (parent de app/), pour que
+# DATABASE_URL relatif pointe toujours vers backend/postrack.db
+# quel que soit le cwd (uvicorn depuis backend/ ou racine).
+_BACKEND_DIR = Path(__file__).resolve().parents[2]
+_DEFAULT_DB_URL = f"sqlite:///{(_BACKEND_DIR / 'postrack.db').as_posix()}"
 
 
 class Settings(BaseSettings):
@@ -13,7 +22,35 @@ class Settings(BaseSettings):
     VERSION: str = "4.0 (Jour 14 - version finale)"
     ENVIRONMENT: str = "development"
 
-    DATABASE_URL: str = "sqlite:///./postrack.db"
+    DATABASE_URL: str = _DEFAULT_DB_URL
+
+    @field_validator("DATABASE_URL", mode="after")
+    @classmethod
+    def _normalize_sqlite_url(cls, v: str) -> str:
+        """Force tout sqlite relatif (./postrack.db) à pointer vers backend/postrack.db absolu."""
+        if isinstance(v, str) and v.startswith("sqlite"):
+            # Cas env = sqlite:///./postrack.db  ou sqlite:///postrack.db
+            # On ne touche pas aux URLs mémoire (:memory:) ni aux URLs déjà absolues Windows/Unix
+            if v in ("sqlite://", "sqlite:///:memory:", "sqlite:///./:memory:"):
+                return v
+            # Détecte relatif : contient "./" ou pas de chemin absolu après sqlite:///
+            # sqlite:///./postrack.db -> backend/postrack.db
+            # sqlite:///postrack.db   -> backend/postrack.db (relatif)
+            # sqlite:///C:/...         -> déjà absolu (contient : ou commence par /)
+            prefix = "sqlite:///"
+            if v.startswith(prefix):
+                path_part = v[len(prefix):]
+                # Déjà absolu si contient ":" (Windows) ou commence par "/"
+                is_abs = ":" in path_part or path_part.startswith("/")
+                if not is_abs and path_part not in ("", ":memory:"):
+                    # Relatif → résoudre vers backend absolu
+                    # Nettoie "./" préfixe
+                    clean = path_part.lstrip("./")
+                    if not clean:
+                        clean = "postrack.db"
+                    abs_path = (_BACKEND_DIR / clean).as_posix()
+                    return f"sqlite:///{abs_path}"
+        return v
 
     SECRET_KEY: str = "change-this-secret-key-in-production"
     ALGORITHM: str = "HS256"

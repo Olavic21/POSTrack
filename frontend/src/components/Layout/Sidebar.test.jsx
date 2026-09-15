@@ -49,7 +49,8 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Partenaires' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Import Excel' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Audit' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Stock SIM/ })).toBeInTheDocument()
+    // Stock SIM retiré de la navigation (demande métier) — route /sims reste accessible directe mais non listée
+    expect(screen.queryByRole('link', { name: /Stock SIM/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Requêtes' })).toBeInTheDocument()
   })
 

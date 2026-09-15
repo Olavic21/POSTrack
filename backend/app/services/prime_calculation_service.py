@@ -1,14 +1,17 @@
 """
-prime_calculation_service : point d'entree obligatoire pour le calcul
-des primes par periode.
+prime_calculation_service : LEGACY — calcul à montant fixe par POS.
 
-Regles appliquees (cahier des charges v3.1-R7, section Primes) :
-  - seul un POS NOUVEAU (jamais reconduit) est eligible ;
-  - une seule prime par POS (contrainte d'unicite verifiee ici et en base) ;
-  - la PrimePeriod doit etre OPEN pour permettre le calcul ;
-  - le montant est fixe par POS Nouveau (parametre de l'appel) ;
-  - une DSMCommission est produite en parallele pour chaque DSM ayant
-    au moins un POS eligible dans la periode.
+⚠️  LEGACY / COMPATIBILITÉ : ce service historique (montant_fixe = 50 000 FCFA
+par POS NOUVEAU, quote-part DSM 10 %) est conservé uniquement pour la
+compatibilité avec les anciennes Prime/DSMCommission (status CALCULATED) et
+pour la validation de primes unitaires (validate_prime). Le moteur de référence
+pour les primes DSM est désormais dsm_prime_calculation_service (phase 3B) :
+grille 75/95, taux 0,1/0,5 %, double critère quantité+revenus, montant =
+taux × revenus réels. Le Dashboard doit afficher le montant 3B (DSMCommission
+ELIGIBLE/NON_ELIGIBLE) lorsqu'une période OPEN existe, pas ce montant fixe.
+
+Ne pas utiliser pour de nouveaux calculs DSM — utiliser
+dsm_prime_calculation_service.calculate_dsm_primes_for_period.
 """
 from decimal import Decimal
 from sqlalchemy.orm import Session

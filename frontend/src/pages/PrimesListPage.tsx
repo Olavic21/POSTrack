@@ -50,7 +50,7 @@ function PrimesListPage() {
     const fetchPrimes = async () => {
       try {
         setLoading(true)
-        const params: any = {}
+        const params: Record<string, unknown> = {}
         if (filters.search) params.search = filters.search
         if (filters.status) params.status = filters.status
         if (filters.period) params.period = filters.period

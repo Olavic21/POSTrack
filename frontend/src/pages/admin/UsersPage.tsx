@@ -118,9 +118,11 @@ export default function UsersPage() {
     void loadPartners()
   }, [])
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     void loadUsers()
   }, [loadUsers])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const resetForm = () => {
     setFormData(EMPTY_FORM)
