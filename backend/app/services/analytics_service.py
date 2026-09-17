@@ -830,7 +830,7 @@ def get_dsm_production_financiere(
     Si prime_period_id est fourni, filtre par période métier (date_creation dans [start_date, end_date]).
     Ne crée pas de second moteur : réutilise la même source que dsm_prime_calculation_service.
     """
-    q = db.query(POS).filter(POS.partner_id == partner_id, POS.dsm_id == dsm_id)
+    q = db.query(POS).filter(POS.partner_id == partner_id, POS.dsm_id == dsm_id, POS.type_pos == TypePos.NOUVEAU)
     period_info = None
     if prime_period_id is not None:
         from app.models.prime_period import PrimePeriod
@@ -897,7 +897,7 @@ def get_kpi_objectives(db: Session, partner_id: int, month: date | None = None, 
 
     - PartnerSalesTarget (KPI partenaire : sell-out, loading, creation, reconduction, revenus KPI)
       -> consomme par Dashboard KPI partenaire. Ne sert PAS a la prime DSM.
-    - DSMObjective (objectifs DSM par PrimePeriod, 200 POS / 500k FCFA) -> prime DSM.
+    - DSMObjective (objectifs DSM par PrimePeriod, partenaire 118 POS → 2/DSM, 500k FCFA/DSM) -> prime DSM.
       Si dsm_id fourni, retourne DSMObjective ; sinon retourne PartnerSalesTarget uniquement.
       Aucune agregation implicite DSMObjective -> KPI partenaire (evite confusion niveau).
     """
@@ -1126,6 +1126,8 @@ def get_daily_tracking(db: Session, partner_id: int, dsm_id: int | None = None, 
         pos = db.query(POS).filter(POS.id == r.pos_id).first()
         out.append(
             {
+                "id": r.id,
+                "pos_id": r.pos_id,
                 "date": r.period_start.isoformat() if r.period_start else None,
                 "partner_id": partner_id,
                 "dsm_id": pos.dsm_id if pos else None,
@@ -1139,9 +1141,81 @@ def get_daily_tracking(db: Session, partner_id: int, dsm_id: int | None = None, 
                 "realisation": int(r.revenue or 0),
                 "cumul_realisation": int(r.revenue or 0),
                 "statut": r.source.value if r.source else None,
+                "revenue": float(r.revenue or 0),
+                "stock_value": float(r.stock_value or 0),
+                "active_sims_count": r.active_sims_count,
+                "clients_count": r.clients_count,
+                "period_start": r.period_start.isoformat() if r.period_start else None,
+                "period_end": r.period_end.isoformat() if r.period_end else None,
             }
         )
     return out
+
+
+def create_daily_tracking(db: Session, partner_id: int, payload: dict) -> POSPerformance:
+    """Crée une saisie quotidienne (POSPerformance daily) avec isolation partenaire et anti-doublon."""
+    from app.core.errors import ValidationErrorApp, NotFoundError
+    pos_id = payload.get("pos_id")
+    target_date = payload.get("tracking_date") or payload.get("date")
+    pos = db.query(POS).filter(POS.id == pos_id).first()
+    if not pos:
+        raise NotFoundError("POS introuvable.")
+    if pos.partner_id != partner_id:
+        raise ValidationErrorApp("Ce POS n'appartient pas à ce partenaire.")
+    # Anti-doublon : même POS + même date
+    existing = db.query(POSPerformance).filter(
+        POSPerformance.pos_id == pos_id,
+        POSPerformance.period_start == target_date,
+        POSPerformance.period_end == target_date,
+    ).first()
+    if existing:
+        raise ValidationErrorApp(f"Une saisie existe déjà pour le POS {pos.code_pos} à la date {target_date}.")
+    perf = POSPerformance(
+        partner_id=partner_id,
+        pos_id=pos_id,
+        period_start=target_date,
+        period_end=target_date,
+        revenue=payload.get("revenue") or 0,
+        stock_value=payload.get("stock_value") or 0,
+        active_sims_count=payload.get("active_sims_count") or 0,
+        clients_count=payload.get("clients_count") or 0,
+        performance_score=float(payload.get("revenue") or 0) * 0.01 if payload.get("revenue") else 0,
+        source=payload.get("source") or __import__("app.models.pos_performance", fromlist=["SourcePerformance"]).SourcePerformance.MANUEL,
+    )
+    db.add(perf)
+    db.commit()
+    db.refresh(perf)
+    return perf
+
+
+def update_daily_tracking(db: Session, partner_id: int, perf_id: int, payload: dict) -> POSPerformance:
+    from app.core.errors import NotFoundError, ValidationErrorApp
+    perf = db.query(POSPerformance).filter(POSPerformance.id == perf_id).first()
+    if not perf:
+        raise NotFoundError("Saisie quotidienne introuvable.")
+    if perf.partner_id != partner_id:
+        raise ValidationErrorApp("Cette saisie n'appartient pas à ce partenaire.")
+    for k in ("revenue", "stock_value", "active_sims_count", "clients_count"):
+        if payload.get(k) is not None:
+            setattr(perf, k, payload[k])
+    # recalc score
+    if payload.get("revenue") is not None:
+        perf.performance_score = float(payload["revenue"] or 0) * 0.01
+    db.add(perf)
+    db.commit()
+    db.refresh(perf)
+    return perf
+
+
+def delete_daily_tracking(db: Session, partner_id: int, perf_id: int) -> None:
+    from app.core.errors import NotFoundError, ValidationErrorApp
+    perf = db.query(POSPerformance).filter(POSPerformance.id == perf_id).first()
+    if not perf:
+        raise NotFoundError("Saisie quotidienne introuvable.")
+    if perf.partner_id != partner_id:
+        raise ValidationErrorApp("Cette saisie n'appartient pas à ce partenaire.")
+    db.delete(perf)
+    db.commit()
 
 
 # --- Table des ventes ---

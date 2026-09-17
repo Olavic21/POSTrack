@@ -22,6 +22,9 @@ export const analyticsService = {
 
   // --- Phase 1 : suivi quotidien & table des ventes ---
   getDailyTracking: (partnerId, params) => api.get(`/partners/${partnerId}/analytics/tracking/daily`, { params, skipPartnerPrefix: true }),
+  createDailyTracking: (partnerId, payload) => api.post(`/partners/${partnerId}/analytics/tracking/daily`, payload, { skipPartnerPrefix: true }),
+  updateDailyTracking: (partnerId, perfId, payload) => api.put(`/partners/${partnerId}/analytics/tracking/daily/${perfId}`, payload, { skipPartnerPrefix: true }),
+  deleteDailyTracking: (partnerId, perfId) => api.delete(`/partners/${partnerId}/analytics/tracking/daily/${perfId}`, { skipPartnerPrefix: true }),
   getSalesTable: (partnerId, params) => api.get(`/partners/${partnerId}/analytics/sales/table`, { params, skipPartnerPrefix: true }),
 
   // --- Prime DSM canonique (via /primes/dsm-summary) — évite alias déprécié /primes/dsm/summary ---

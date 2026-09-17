@@ -40,12 +40,14 @@ def test_bts_etat(db, seed):
 
 
 def test_prime_dsm_configurable(db, seed):
-    """Phase 2 : PrimeGrid supprime, seuils desormais uniquement config.py (75/95 -> 0.1/0.5)."""
+    """Refonte 2026-09 : paliers 75/85/95 → 5/6/7% (source unique config.py)."""
     from app.core.config import settings
     assert settings.PRIME_THRESHOLD_LOW == 75.0
+    assert settings.PRIME_THRESHOLD_MID == 85.0
     assert settings.PRIME_THRESHOLD_HIGH == 95.0
-    assert settings.PRIME_RATE_LOW == 0.1
-    assert settings.PRIME_RATE_HIGH == 0.5
+    assert settings.PRIME_RATE_LOW == 5.0
+    assert settings.PRIME_RATE_MID == 6.0
+    assert settings.PRIME_RATE_HIGH == 7.0
     from app.services.dsm_prime_calculation_service import calculate_dsm_primes_for_period
     from app.models.prime_period import PrimePeriod, StatutPeriode
 

@@ -20,15 +20,15 @@ const ChartCard = ({ title, subtitle, loading = false, children, className = '',
   }
 
   return (
-    <div className={`card overflow-hidden transition-shadow duration-200 hover:shadow-md ${className}`}>
-      <div className="card-header flex items-center justify-between">
+    <div className={`card overflow-hidden ${className}`}>
+      <div className="p-5 pb-3 flex items-center justify-between">
         <div>
-          <h2 className="text-base font-bold text-slate-900">{title}</h2>
+          <h2 className="text-sm font-bold tracking-tight text-slate-900">{title}</h2>
           {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
         </div>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
-      <div className="card-body" style={{ minHeight: 280 }}>
+      <div className="px-2 pb-4" style={{ minHeight: 280 }}>
         {children}
       </div>
     </div>

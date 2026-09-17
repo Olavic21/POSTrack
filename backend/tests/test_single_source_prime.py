@@ -1,11 +1,12 @@
-"""Tests Phase 1-2 : source unique Prime DSM 3B.
+"""Tests refonte 2026-09 : source unique Prime DSM (paliers 5/6/7%).
 
 Regle officielle :
-  200 POS / 500 000 FCFA par DSM/mois
-  <75% -> 0 ; 75-<95% -> 0,1% ; >=95% -> 0,5%
+  Partenaire 110 POS/mois (→ ~2 POS/DSM) + 500 000 FCFA/DSM/mois
+  <75% -> 0% ; [75,85%) -> 5% ; [85,95%) -> 6% ; [95,+inf) -> 7%
   Deux criteres requis, taux final = MIN(taux POS, taux revenus)
-  Prime = revenus_reels * taux /100
-  Exemple 194 POS + 485 000 -> 2 425 FCFA
+  Prime = revenus_reels (POS.sim_balance) * taux /100
+  Exemple 194/200=97%→7% => 485 000×7%=33 950 FCFA
+  Exemple mission 2/2=100%→7% => 100 000×7%=7 000 FCFA
 
 Couvre les 12 cas obligatoires du spec section 15 + verif PrimeGrid n'influence plus.
 """
@@ -59,7 +60,7 @@ def _detail(client, partner_id, period_id, dsm_id):
     assert r.status_code == 200, r.text
     return r.json()
 
-# 1. 194 + 485000 -> 2425
+# 1. 194 + 485000 -> dual 33 950 +33 950 =67 900 (7%)
 def test_194_485k_gives_2425(client, seed):
     db = SessionLocal()
     p = _partner(db, "SSP-1", "SSP 1")
@@ -75,11 +76,12 @@ def test_194_485k_gives_2425(client, seed):
     assert det["creation_achievement_pct"] == 97.0
     assert det["revenue_achievement_pct"] == 97.0
     assert det["revenue_realized"] == 485000.0
-    assert det["revenue_prime_amount"] == 2425.0
-    assert det["total_prime_amount"] == 2425.0
+    assert det["revenue_prime_amount"] == 33950.0
+    assert det["creation_prime_amount"] == 33950.0
+    assert det["total_prime_amount"] == 67900.0
     assert det["status"] == "ELIGIBLE"
 
-# 2. 499 partenaire vs 194 DSM -> prime basee sur 194
+# 2. 499 partenaire vs 194 DSM -> prime basee sur 194 (dual 67 900)
 def test_partner_499_vs_dsm_194(client, seed):
     db = SessionLocal()
     p = _partner(db, "SSP-2", "SSP 2")
@@ -91,7 +93,7 @@ def test_partner_499_vs_dsm_194(client, seed):
     # D1 : 194 POS avec revenus
     for i in range(194):
         _pos(db, p.id, d1.id, f"2A-{i:03d}", sim_balance=2500.0)
-    # D2 : 305 POS sans revenus -> total partenaire 499 mais D2 non eligible (revenus 0)
+    # D2 : 305 POS sans revenus -> total partenaire 499 mais D2 revenue 0 => creation prime 0 (amount 0) total 0
     for i in range(305):
         _pos(db, p.id, d2.id, f"2B-{i:03d}", sim_balance=0.0)
     pid, d1id, d2id, perid = p.id, d1.id, d2.id, per.id
@@ -99,30 +101,29 @@ def test_partner_499_vs_dsm_194(client, seed):
     _calc(client, pid, perid)
     det1 = _detail(client, pid, perid, d1id)
     det2 = _detail(client, pid, perid, d2id)
-    assert det1["total_prime_amount"] == 2425.0
+    assert det1["total_prime_amount"] == 67900.0
     assert det2["total_prime_amount"] == 0.0
-    # Dashboard partenaire total 499 ne doit pas polluer DSM
     assert det1["creation_realized"] == 194
     assert det1["revenue_realized"] == 485000.0
 
-# 3. Ancienne grille 10k/20k/30k n'influence pas (tables supprimees phase 2 : plus possible de creer grille, le moteur ignore toute grille)
+# 3. Ancienne grille n'influence pas (moteur ignore grille, taux 5/6/7 seul) => dual 67 900
 def test_old_grid_does_not_influence(client, seed):
     db = SessionLocal()
     p = _partner(db, "SSP-3", "SSP 3")
     d = _dsm(db, p.id, "D-SSP3")
     per = _period(db, p.id, "SSP-P3")
     _obj(db, p.id, d.id, per.id)
-    # Phase 2 : prime_grids tables supprimees -> aucune grille ne peut etre creee, le moteur doit rester sur 2425
     for i in range(194):
         _pos(db, p.id, d.id, f"3-{i:03d}", sim_balance=2500.0)
     pid, did, perid = p.id, d.id, per.id
     db.close()
     _calc(client, pid, perid)
     det = _detail(client, pid, perid, did)
-    assert det["total_prime_amount"] == 2425.0
-    assert det["creation_prime_amount"] == 0.0
+    assert det["total_prime_amount"] == 67900.0
+    assert det["creation_prime_amount"] == 33950.0
+    assert det["revenue_prime_amount"] == 33950.0
 
-# 4. Aucune grille -> fonctionne
+# 4. Aucune grille -> fonctionne (dual 7%)
 def test_no_grid_still_works(client, seed):
     db = SessionLocal()
     p = _partner(db, "SSP-4", "SSP 4")
@@ -133,10 +134,9 @@ def test_no_grid_still_works(client, seed):
         _pos(db, p.id, d.id, f"4-{i:03d}", sim_balance=2500.0)
     pid, did, perid = p.id, d.id, per.id
     db.close()
-    # Phase 2 : plus de tables prime_grids -> rien a nettoyer, le calcul doit fonctionner sans grille
     _calc(client, pid, perid)
     det = _detail(client, pid, perid, did)
-    assert det["total_prime_amount"] == 2425.0
+    assert det["total_prime_amount"] == 67900.0
 
 # 5. Modification objectif impacte seulement DSM/periode concerne
 def test_objective_update_isolated(client, seed):
@@ -234,7 +234,7 @@ def test_operationnel_cannot_distribute(client, seed, oper_token):
     r = client.post(f"/api/partners/{pid}/dsm-objectives/distribute", json={"prime_period_id": perid, "global_creation_target": 200, "global_revenue_target": 500000}, headers=auth_headers(oper_token))
     assert r.status_code == 403
 
-# 10. Aucune donnee -> message explicite
+# 10. Aucune donnee -> message explicite (NON_PRIMÉ)
 def test_no_data_explicit(client, seed):
     db = SessionLocal()
     p = _partner(db, "SSP-10", "SSP 10")
@@ -245,11 +245,10 @@ def test_no_data_explicit(client, seed):
     db.close()
     _calc(client, pid, perid)
     det = _detail(client, pid, perid, did)
-    # 0 POS, 0 revenus -> 0% et prime 0 mais explicite
     assert det["creation_achievement_pct"] == 0.0
     assert det["revenue_achievement_pct"] == 0.0
     assert det["total_prime_amount"] == 0.0
-    assert det["status"] == "NON_ELIGIBLE"
+    assert det["status"] in ("NON_ELIGIBLE", "NON_PRIMÉ")
 
 # 11. Revenu premiere recharge != loading
 def test_revenue_vs_loading_distinction(client, seed):

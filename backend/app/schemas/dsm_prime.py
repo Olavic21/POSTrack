@@ -85,13 +85,27 @@ class PartnerPrimeSummaryDSMItem(BaseModel):
     creation_objective: int | None = None
     creation_realized: int | None = None
     creation_achievement_pct: float = 0
+    creation_rate_pct: float = 0
+    creation_tier: str | None = None
     creation_prime_amount: float = 0
+    creation_generated_amount: float = 0
+    creation_prime_rate: float = 0
+    creation_qualified: bool = False
     revenue_objective: float = 0
     revenue_realized: float = 0
     revenue_achievement_pct: float = 0
+    revenue_rate_pct: float = 0
+    revenue_tier: str | None = None
     revenue_prime_amount: float = 0
+    revenue_prime_rate: float = 0
+    revenue_qualified: bool = False
+    double_qualified: bool = False
+    prime_status: str | None = None  # PRIMÉ / PRIMÉ_1_COMPOSANTE / NON_PRIMÉ (+ compat PARTIELLEMENT_ATTEINT)
     total_prime_amount: float = 0
+    final_rate_pct: float | None = None
     status: str | None = None
+
+    model_config = ConfigDict(extra="ignore")
 
 
 class PartnerPrimeSummaryOut(BaseModel):
@@ -102,11 +116,18 @@ class PartnerPrimeSummaryOut(BaseModel):
     global_creation_target: int
     global_creation_realized: int
     global_creation_achievement_pct: float
+    global_creation_rate_pct: float = 0
+    global_creation_tier: str | None = None
     global_revenue_target: float
     global_revenue_realized: float
     global_revenue_achievement_pct: float
+    global_revenue_rate_pct: float = 0
+    global_revenue_tier: str | None = None
     total_creation_prime: float
     total_revenue_prime: float
     total_prime: float
     dsm_count: int
+    quantity_qualified_dsm_count: int = 0
+    revenue_qualified_dsm_count: int = 0
+    double_qualified_dsm_count: int = 0
     by_dsm: list[PartnerPrimeSummaryDSMItem]

@@ -70,17 +70,23 @@ class Settings(BaseSettings):
     BTS_SATURATION_THRESHOLD: float = 80.0
     BTS_ALMOST_SATURATED_THRESHOLD: float = 70.0
 
-    # --- Phase 3B : règles métier primes DSM (source de vérité backend) ---
+    # --- Prime DSM — règle officielle POSTrack (refonte 2026-09 — correctif 118) ---
     # PU = POS (le cahier utilise « PU inscrits » pour les POS créés).
-    # Objectifs mensuels par défaut utilisés lorsqu'aucun DSMObjective
-    # n'est défini pour la période (configurables, jamais hardcodés en React).
-    DSM_DEFAULT_CREATION_OBJECTIVE: int = 200
+    # Objectif individuel DSM : 2 POS / mois + 500 000 FCFA recettes 1ère recharge / mois
+    # Objectif global partenaire = somme des objectifs DSM (59 DSM × 2 = 118 POS ; 59 × 500 000 = 29 500 000 FCFA)
+    # L'ancien global 110 POS est ABANDONNÉ — ne plus utiliser 110 comme cible partenaire.
+    # PARTNER_GLOBAL_CREATION_TARGET conservé pour compatibilité mais la source de vérité
+    # est désormais la somme des DSMObjective (ou nb_DSM × 2) — voir dsm_prime_calculation_service.
+    PARTNER_GLOBAL_CREATION_TARGET: int = 118
+    DSM_DEFAULT_CREATION_OBJECTIVE: int = 2
     DSM_DEFAULT_REVENUE_OBJECTIVE: float = 500000.0
-    # Grille de référence : <75 % → 0 ; 75–<95 % → 0,1 % ; >=95 % → 0,5 %.
+    # Grille officielle : <75 % → 0 % ; [75,85) → 5 % ; [85,95) → 6 % ; [95,+∞) → 7 %.
     PRIME_THRESHOLD_LOW: float = 75.0
+    PRIME_THRESHOLD_MID: float = 85.0
     PRIME_THRESHOLD_HIGH: float = 95.0
-    PRIME_RATE_LOW: float = 0.1
-    PRIME_RATE_HIGH: float = 0.5
+    PRIME_RATE_LOW: float = 5.0
+    PRIME_RATE_MID: float = 6.0
+    PRIME_RATE_HIGH: float = 7.0
 
     # Nombre de jours avant expiration a partir duquel un POS declenche
     # une alerte sur le Dashboard Partenaire (Jour 12 de la roadmap)

@@ -65,6 +65,12 @@ export const primeService = {
       skipPartnerPrefix: true,
     }),
 
+  getDsmPrimeDetail: (partnerId, dsmId, periodId) =>
+    api.get(`/partners/${partnerId}/primes/dsm/detail`, {
+      params: { dsm_id: dsmId, prime_period_id: periodId },
+      skipPartnerPrefix: true,
+    }),
+
   // --- Periodes de prime ---
   getPeriods: (partnerId) =>
     api.get(`/partners/${partnerId}/prime-periods`, { skipPartnerPrefix: true }),

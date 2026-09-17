@@ -9,7 +9,7 @@ from app.crud.prime_crud import dsm_commission_crud
 from app.models.user import User
 from app.security.permissions import Role
 from app.schemas.analytics import DashboardOut, DSMDashboardOut, PartnerSalesSummaryOut, PartnerSalesTargetCreate, PartnerSalesTargetOut, PartnerLoadingSummaryOut, DSMSummaryOut
-from app.schemas.pos_performance import POSPerformanceOut, POSPerformanceCalculateRequest
+from app.schemas.pos_performance import POSPerformanceOut, POSPerformanceCalculateRequest, DailyTrackingCreate, DailyTrackingUpdate
 from app.schemas.prime import DSMCommissionOut
 from app.schemas.pagination import Page
 from app.services.analytics_service import (
@@ -18,6 +18,7 @@ from app.services.analytics_service import (
     get_sim_linkage_stats, get_bts_production, get_dsm_production_financiere, get_bts_etat_list,
     get_kpi_objectives, get_kpi_realisations, get_kpi_dsm_both_criteria, get_daily_tracking, get_sales_table,
     get_dsm_prime_summary, get_dsm_prime_detail,
+    create_daily_tracking, update_daily_tracking, delete_daily_tracking,
 )
 
 router = APIRouter(prefix="/api/partners/{partner_id}/analytics", tags=["Analytics"])
@@ -158,6 +159,25 @@ def tracking_daily(partner_id: int = Depends(get_partner_context), dsm_id: int |
 
     d = _date.fromisoformat(date) if date else None
     return get_daily_tracking(db, partner_id, dsm_id, d)
+
+
+@router.post("/tracking/daily", response_model=POSPerformanceOut, status_code=201)
+def tracking_daily_create(payload: DailyTrackingCreate, partner_id: int = Depends(get_partner_context), db: Session = Depends(get_db), _user: User = Depends(require_roles(Role.ADMIN, Role.MANAGER, Role.CHEF_OPERATIONNEL, Role.OPERATIONNEL))):
+    """Crée une saisie quotidienne (isolation partenaire + anti-doublon pos_id+date)."""
+    return create_daily_tracking(db, partner_id, payload.model_dump())
+
+
+@router.put("/tracking/daily/{perf_id}", response_model=POSPerformanceOut)
+def tracking_daily_update(perf_id: int, payload: DailyTrackingUpdate, partner_id: int = Depends(get_partner_context), db: Session = Depends(get_db), _user: User = Depends(require_roles(Role.ADMIN, Role.MANAGER, Role.CHEF_OPERATIONNEL, Role.OPERATIONNEL))):
+    """Modifie une saisie quotidienne (isolation partenaire)."""
+    return update_daily_tracking(db, partner_id, perf_id, payload.model_dump(exclude_unset=True))
+
+
+@router.delete("/tracking/daily/{perf_id}", status_code=204)
+def tracking_daily_delete(perf_id: int, partner_id: int = Depends(get_partner_context), db: Session = Depends(get_db), _user: User = Depends(require_roles(Role.ADMIN, Role.CHEF_OPERATIONNEL))):
+    """Supprime une saisie quotidienne (isolation partenaire)."""
+    delete_daily_tracking(db, partner_id, perf_id)
+    return None
 
 
 @router.get("/primes/summary", deprecated=True)

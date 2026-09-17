@@ -41,6 +41,7 @@ const SalesTargetsPage = lazy(() => import('./pages/analytics/SalesTargetsPage')
 const PartenaireCreatePage = lazy(() => import('./pages/partenaires/PartenaireCreatePage'))
 const PartnerPrimesDashboard = lazy(() => import('./pages/primes/PartnerPrimesDashboard'))
 const ObjectivesDistributionPage = lazy(() => import('./pages/primes/ObjectivesDistributionPage'))
+const DSMPrimeDetailPage = lazy(() => import('./pages/primes/DSMPrimeDetailPage'))
 const PartnerPOSPage = lazy(() => import('./pages/partners/PartnerPOSPage'))
 const UsersPage = lazy(() => import('./pages/admin/UsersPage'))
 const GeolocalisationPage = lazy(() => import('./pages/GeolocalisationPage'))
@@ -153,6 +154,16 @@ function App() {
                 <RoleGuard roles={ROLE_GROUPS.PARTNER_PORTFOLIO}>
                   <Suspense fallback={<LoadingSpinner />}>
                     <PartnerPrimesDashboard />
+                  </Suspense>
+                </RoleGuard>
+              }
+            />
+            <Route
+              path="primes/dsm/:dsmId"
+              element={
+                <RoleGuard roles={ROLE_GROUPS.PARTNER_PORTFOLIO}>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <DSMPrimeDetailPage />
                   </Suspense>
                 </RoleGuard>
               }

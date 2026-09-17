@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import usePartner from '../../hooks/usePartner';
 import primeService from '../../services/primeService';
+import PageHeader from '../../components/Common/PageHeader/PageHeader';
 
 const formatInt = (v) => {
   if (v === null || v === undefined) return '0';
@@ -8,13 +9,8 @@ const formatInt = (v) => {
 };
 
 const formatCurrency = (v) => {
-  if (v === null || v === undefined) return '0 FCFA';
+  if (v === null || v === undefined) return '—';
   return `${new Intl.NumberFormat('fr-FR').format(Number(v))} FCFA`;
-};
-
-const formatPct = (v) => {
-  if (v === null || v === undefined || isNaN(Number(v))) return '—';
-  return `${Number(v).toFixed(1)} %`;
 };
 
 export default function ObjectivesDistributionPage() {
@@ -29,7 +25,6 @@ export default function ObjectivesDistributionPage() {
   const [editValue, setEditValue] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Fetch periods
   useEffect(() => {
     if (!partnerContextId) return;
     let ignore = false;
@@ -37,9 +32,7 @@ export default function ObjectivesDistributionPage() {
       try {
         const res = await primeService.getPeriods(partnerContextId);
         const data = res.data?.items ?? res.data ?? [];
-        if (!ignore) {
-          setPeriods(Array.isArray(data) ? data : []);
-        }
+        if (!ignore) setPeriods(Array.isArray(data) ? data : []);
       } catch {
         if (!ignore) setPeriods([]);
       }
@@ -91,11 +84,9 @@ export default function ObjectivesDistributionPage() {
     }
     setDistributing(true);
     try {
-      // Objectifs globaux : si aucun objectif encore distribué, utiliser les défauts métier 200* nbDSM / 500k* nbDSM
-      // Sinon, répartir à partir des totaux déjà en base via summary ; fallback 200/500k par DSM si vide
-      const dsmCountFallback = 1;
-      const globalCreation = summary?.global_creation_target || summary?.total_creation_target || 200 * dsmCountFallback;
-      const globalRevenue = summary?.global_revenue_target || summary?.total_revenue_target || 500000 * dsmCountFallback;
+      const currentDsmCount = summary?.dsm_count || objectives.length || 59;
+      const globalCreation = summary?.global_creation_target ?? summary?.total_creation_target ?? currentDsmCount * 2;
+      const globalRevenue = summary?.global_revenue_target ?? summary?.total_revenue_target ?? 500000 * currentDsmCount;
       await primeService.distributeObjectives(partnerContextId, {
         prime_period_id: selectedPeriod.id,
         global_creation_target: globalCreation,
@@ -119,7 +110,7 @@ export default function ObjectivesDistributionPage() {
     if (!editing) return;
     setSaving(true);
     try {
-      const reason = window.prompt('Motif de la modification manuelle (optionnel) :', '') || undefined;
+      const reason = window.prompt('Motif de la modification (optionnel) :', '') || undefined;
       const payload = { [editing.field]: parseFloat(editValue) || 0, ...(reason ? { reason } : {}) };
       await primeService.updateObjective(partnerContextId, editing.id, payload);
       setEditing(null);
@@ -142,97 +133,90 @@ export default function ObjectivesDistributionPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="animate-fade-in">
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Objectifs DSM par période</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Objectif global (ex : 200 POS × nb DSM, 500 000 FCFA × nb DSM) → distribution automatique pondérée par coefficient de micro-zone → objectif final par DSM (éditable avec traçabilité).
-        </p>
-        <p className="mt-1 text-xs text-amber-600">Objectif final retenu = valeur affichée ci-dessous. Badge <span className="inline-flex rounded bg-slate-100 px-1 font-semibold">AUTO</span> = issu de la distribution ; <span className="inline-flex rounded bg-amber-100 px-1 font-semibold text-amber-700">MANUEL</span> = écrasé manuellement (conserve valeur auto dans audit).</p>
-      </div>
+      <PageHeader
+        title="Objectifs DSM par période"
+        subtitle="Distribution pondérée par micro-zone — 2 POS / DSM et 500 000 FCFA / DSM. Objectif final éditable avec traçabilité."
+        breadcrumbs={['Primes', 'Objectifs DSM']}
+        eyebrow="Administration"
+        actions={
+          selectedPeriod ? (
+            <button type="button" onClick={handleDistribute} disabled={distributing} className="btn btn-primary">
+              {distributing ? 'Distribution…' : 'Distribuer automatiquement'}
+            </button>
+          ) : null
+        }
+      />
 
-      {/* Period selector */}
-      <div className="card overflow-hidden animate-fade-in stagger-1">
-        <div className="card-header flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Période</h2>
-            <p className="text-xs text-slate-500">Sélectionnez une période pour gérer les objectifs.</p>
-          </div>
-          <select
-            value={selectedPeriod?.id || ''}
-            onChange={(e) => {
-              const p = periods.find((pp) => pp.id === Number(e.target.value));
-              setSelectedPeriod(p || null);
-            }}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          >
-            <option value="">— Sélectionner —</option>
-            {periods.map((p) => (
-              <option key={p.id} value={p.id}>{p.code} — {p.label}</option>
-            ))}
-          </select>
+      <div className="card p-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-slate-900">Période</p>
+          <p className="text-xs text-slate-500">Sélectionnez une période pour gérer les objectifs</p>
         </div>
+        <select
+          value={selectedPeriod?.id || ''}
+          onChange={(e) => {
+            const p = periods.find((pp) => pp.id === Number(e.target.value));
+            setSelectedPeriod(p || null);
+          }}
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium shadow-sm"
+        >
+          <option value="">— Sélectionner —</option>
+          {periods.map((p) => (
+            <option key={p.id} value={p.id}>{p.code} — {p.label}</option>
+          ))}
+        </select>
       </div>
 
-      {/* Summary + distribute button */}
       {summary && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 animate-fade-in stagger-2">
-          <div className="card overflow-hidden border-l-[3px] border-l-indigo-500 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#0176d3]">Obj. Création Global</p>
-            <p className="mt-1 text-xl font-extrabold text-slate-900">{formatInt(summary.global_creation_target)} POS</p>
-            <p className="text-xs text-slate-400">Réalisé : {formatInt(summary.global_creation_realized)}</p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="card p-5">
+            <p className="kpi-label text-indigo-600">Création — objectif global</p>
+            <p className="kpi-value mt-2 text-slate-900">{formatInt(summary.global_creation_target)} POS</p>
+            <p className="kpi-sub">Réalisé : {formatInt(summary.global_creation_realized)}</p>
           </div>
-          <div className="card overflow-hidden border-l-[3px] border-l-emerald-500 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#2e844a]">Obj. Revenus Global</p>
-            <p className="mt-1 text-xl font-extrabold text-slate-900">{formatCurrency(summary.global_revenue_target)}</p>
-            <p className="text-xs text-slate-400">Réalisé : {formatCurrency(summary.global_revenue_realized)}</p>
+          <div className="card p-5">
+            <p className="kpi-label text-emerald-600">Revenus — objectif global</p>
+            <p className="kpi-value mt-2 text-slate-900">{formatCurrency(summary.global_revenue_target)}</p>
+            <p className="kpi-sub">Réalisé : {formatCurrency(summary.global_revenue_realized)}</p>
           </div>
-          <div className="card overflow-hidden border-l-[3px] border-l-amber-500 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#c23934]">Total Objectifs DSM</p>
-            <p className="mt-1 text-xl font-extrabold text-slate-900">{objectives.length} DSM</p>
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={handleDistribute}
-                disabled={distributing || !selectedPeriod}
-                className="btn btn-primary btn-sm w-full"
-              >
-                {distributing ? 'Distribution…' : 'Distribuer automatiquement'}
-              </button>
-            </div>
+          <div className="card p-5 flex flex-col justify-center">
+            <p className="kpi-label text-slate-500">DSM concernés</p>
+            <p className="kpi-value mt-2 text-slate-900">{objectives.length}</p>
+            <p className="kpi-sub">{formatInt(totalCreationObj)} POS • {formatCurrency(totalRevenueObj)}</p>
           </div>
         </div>
       )}
 
-      {/* Objectives table */}
-      <div className="card overflow-hidden animate-fade-in stagger-3">
-        <div className="card-header">
-          <h3 className="text-lg font-bold text-slate-900">Objectifs par DSM — objectif final retenu</h3>
-          <p className="text-xs text-slate-500">
-            Cliquez sur une valeur pour la modifier manuellement (motif demandé, badge MANUEL, audit conservé).
-          </p>
+      <div className="card overflow-hidden">
+        <div className="p-5 flex items-center justify-between border-b border-slate-100">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Objectifs par DSM</h3>
+            <p className="text-xs text-slate-500">Cliquez sur une valeur pour la modifier • Badge AUTO / MANUEL</p>
+          </div>
+          <span className="rounded-full bg-slate-50 border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600">{objectives.length} DSM</span>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-100 text-sm">
-            <thead className="bg-slate-50/80">
+            <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">DSM</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Micro Zone</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Coefficient</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Obj. Création (final)</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500">Obj. Revenus 1ère recharge (final)</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">Statut</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">DSM</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">Micro Zone</th>
+                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-500">Coefficient</th>
+                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-500">Création</th>
+                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-500">Revenus 1ère recharge</th>
+                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-slate-500">Statut</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">Chargement…</td>
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">Chargement…</td>
                 </tr>
               ) : objectives.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">
-                    Aucun objectif distribué. Sélectionnez une période et cliquez « Distribuer automatiquement ». Formule : objectif DSM = global × coef / Σcoef (arrondi, dernier DSM ajuste).
+                  <td colSpan={6} className="px-4 py-12 text-center">
+                    <p className="text-sm font-semibold text-slate-700">Aucun objectif distribué</p>
+                    <p className="mt-1 text-xs text-slate-500">Sélectionnez une période et lancez la distribution automatique.</p>
                   </td>
                 </tr>
               ) : (
@@ -240,8 +224,8 @@ export default function ObjectivesDistributionPage() {
                   {objectives.map((obj) => {
                     const isManual = obj.updated_at && obj.created_at && new Date(obj.updated_at).getTime() - new Date(obj.created_at).getTime() > 1000;
                     return (
-                    <tr key={obj.id} className="table-row-hover transition-colors">
-                      <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
+                    <tr key={obj.id} className="hover:bg-slate-50">
+                      <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900">
                         {obj.dsm_name || `DSM #${obj.dsm_id}`}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-slate-600">{obj.micro_zone_name || '—'}</td>
@@ -253,21 +237,20 @@ export default function ObjectivesDistributionPage() {
                               type="number"
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
-                              className="w-24 rounded border border-blue-300 px-2 py-1 text-sm text-right"
+                              className="w-24 rounded-xl border border-indigo-300 px-2 py-1.5 text-sm text-right focus:ring-2 focus:ring-indigo-100"
                               autoFocus
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') handleEditSave();
                                 if (e.key === 'Escape') handleEditCancel();
                               }}
                             />
-                            <button onClick={handleEditSave} disabled={saving} className="text-xs font-medium text-emerald-600">OK</button>
-                            <button onClick={handleEditCancel} className="text-xs font-medium text-slate-400">✕</button>
+                            <button onClick={handleEditSave} disabled={saving} className="rounded-lg bg-emerald-600 px-2 py-1 text-xs font-bold text-white">OK</button>
+                            <button onClick={handleEditCancel} className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">✕</button>
                           </div>
                         ) : (
                           <button
                             onClick={() => handleEditStart(obj, 'creation_objective')}
-                            className="cursor-pointer rounded px-2 py-0.5 text-right tabular-nums hover:bg-blue-50"
-                            title="Cliquer pour modifier"
+                            className="rounded-xl px-2 py-1 text-right tabular-nums hover:bg-indigo-50 font-semibold text-slate-900"
                           >
                             {formatInt(obj.creation_objective)} POS
                           </button>
@@ -280,34 +263,33 @@ export default function ObjectivesDistributionPage() {
                               type="number"
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
-                              className="w-32 rounded border border-blue-300 px-2 py-1 text-sm text-right"
+                              className="w-32 rounded-xl border border-indigo-300 px-2 py-1.5 text-sm text-right focus:ring-2 focus:ring-indigo-100"
                               autoFocus
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') handleEditSave();
                                 if (e.key === 'Escape') handleEditCancel();
                               }}
                             />
-                            <button onClick={handleEditSave} disabled={saving} className="text-xs font-medium text-emerald-600">OK</button>
-                            <button onClick={handleEditCancel} className="text-xs font-medium text-slate-400">✕</button>
+                            <button onClick={handleEditSave} disabled={saving} className="rounded-lg bg-emerald-600 px-2 py-1 text-xs font-bold text-white">OK</button>
+                            <button onClick={handleEditCancel} className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">✕</button>
                           </div>
                         ) : (
                           <button
                             onClick={() => handleEditStart(obj, 'revenue_objective')}
-                            className="cursor-pointer rounded px-2 py-0.5 text-right tabular-nums hover:bg-blue-50"
-                            title="Cliquer pour modifier — motif demandé"
+                            className="rounded-xl px-2 py-1 text-right tabular-nums hover:bg-indigo-50 font-semibold text-slate-900"
                           >
                             {formatCurrency(obj.revenue_objective)}
                           </button>
                         )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-center">
-                        {isManual ? <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700" title={obj.updated_at ? `Modifié le ${new Date(obj.updated_at).toLocaleString('fr-FR')}` : ''}>MANUEL</span> : <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">AUTO</span>}
+                        {isManual ? <span className="inline-flex rounded-full bg-amber-100 border border-amber-200 px-2.5 py-0.5 text-xs font-bold text-amber-700">MANUEL</span> : <span className="inline-flex rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-xs font-bold text-slate-600">AUTO</span>}
                       </td>
                     </tr>
                     );
                   })}
-                  <tr className="bg-slate-50 font-semibold">
-                    <td colSpan={3} className="px-4 py-3 text-right text-xs uppercase tracking-wider text-slate-500">Total distribué (Σ objectifs finaux)</td>
+                  <tr className="bg-slate-50 font-bold">
+                    <td colSpan={3} className="px-4 py-3 text-right text-xs uppercase tracking-wide text-slate-500">Total distribué</td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatInt(totalCreationObj)} POS</td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(totalRevenueObj)}</td>
                     <td></td>

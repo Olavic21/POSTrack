@@ -1,6 +1,6 @@
 """Mesures periodiques de performance d'un POS (Analytics)."""
 import enum
-from sqlalchemy import Column, Integer, ForeignKey, Date, DateTime, Numeric, Enum as SAEnum
+from sqlalchemy import Column, Integer, ForeignKey, Date, DateTime, Numeric, Enum as SAEnum, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -15,6 +15,9 @@ class SourcePerformance(str, enum.Enum):
 
 class POSPerformance(Base):
     __tablename__ = "pos_performance"
+    __table_args__ = (
+        UniqueConstraint("pos_id", "period_start", "period_end", name="uq_pos_performance_pos_period"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     partner_id = Column(Integer, ForeignKey("partners.id"), nullable=False, index=True)

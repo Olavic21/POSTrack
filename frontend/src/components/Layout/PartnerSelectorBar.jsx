@@ -1,49 +1,16 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import usePartner from '../../hooks/usePartner';
-import Button from '../Common/Button/Button';
-import DemoDataBanner from '../Common/DemoDataBanner/DemoDataBanner';
-import { envFlag } from '../../utils/envFlags';
 
-/**
- * Barre de contexte partenaire - style Salesforce : fond bleu clair, texte bleu fonce.
- */
 const PartnerSelectorBar = () => {
-  const { partner, partnerContextId, hasPartner } = usePartner();
-  const navigate = useNavigate();
-
-  if (!hasPartner) return null;
-
-  const name = partner?.nom || partner?.code_partenaire || `Partenaire #${partnerContextId}`;
-  const meta = [partner?.code_partenaire, partner?.ville, partner?.region]
-    .filter(Boolean)
-    .join(' / ');
-
+  const { hasPartner } = usePartner();
+  // Header already shows partner context; this bar is now reserved for demo banner only.
+  if (hasPartner) return null;
   return (
-    <div className="border-b border-[#c9e3fb] bg-[#e8f4fd]">
-      <div className="flex flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:justify-between md:pl-60">
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#0176d3]">
-            Contexte partenaire
-          </p>
-          <p className="truncate text-[13px] font-bold text-[#032d60]">{name}</p>
-          {meta ? <p className="truncate text-[11px] text-[#0176d3]/70">{meta}</p> : null}
-        </div>
-        <Button
-          type="button"
-          variant="primary"
-          className="shrink-0 text-[13px]"
-          onClick={() => navigate('/select-partner')}
-        >
-          Changer de partenaire
-        </Button>
+    <div className="mx-4 md:ml-[260px] mt-3">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 flex items-center gap-3">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 font-bold">!</span>
+        <p className="font-medium">Sélectionnez un partenaire pour afficher les données du tableau de bord.</p>
       </div>
-      {partner?.__mock && !envFlag(import.meta.env.VITE_DISABLE_DEMO_BANNER) ? (
-        <DemoDataBanner
-          compact
-          message="Le backend est indisponible : le contexte partenaire actif utilise des donnees de demonstration."
-        />
-      ) : null}
     </div>
   );
 };

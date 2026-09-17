@@ -1,11 +1,15 @@
 """dsm_objective_service : repartition automatique et gestion des objectifs DSM.
 
-Algorithme de repartition :
-  poids_DSM = coefficient_potentiel de sa micro-zone
-  objectif_DSM = objectif_global × poids_DSM / somme_poids
+Refonte 2026-09 (correctif 118) : objectif individuel 2 POS / DSM, global = somme DSM (59 × 2 = 118 POS).
+Distribution entiere tracable : 118 POS / 59 DSM => 59 DSM a 2 POS (=118) si coefficients égaux.
+Revenus : 500 000 FCFA / DSM => 29 500 000 FCFA partenaire (59 × 500k). Ancien 110 abandonné.
 
-La somme des objectifs individuels est toujours egale a l'objectif global
-(apres ajustement d'arrondi sur le dernier DSM).
+Algorithme de repartition pondere :
+  poids_DSM = coefficient_potentiel micro-zone (defaut 1.0)
+  ideal_DSM = global × poids_DSM / somme_poids
+  On prend floor(ideal), puis distribue le reste aux plus grandes fractions
+  pour que sum == global (evite le bug du dernier DSM a 52 POS).
+La somme des objectifs individuels est toujours egale a l'objectif global.
 """
 from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy.orm import Session
@@ -78,28 +82,42 @@ def distribute_objectives(
     if total_weight <= 0:
         raise ValidationErrorApp("La somme des coefficients de potentiel est invalide.")
 
-    # Distribuer les objectifs
+    # Distribuer les objectifs — version equitable (fraction tri)
+    # Creation POS (entier)
+    ideals = []
+    for dsm, weight in dsm_weights:
+        ideal = Decimal(str(global_creation_target)) * Decimal(str(weight)) / Decimal(str(total_weight))
+        ideals.append((dsm, weight, ideal))
+    floors = [int(ideal) for _, _, ideal in ideals]  # floor for positive ideals
+    fractions = [(ideal - Decimal(floors[idx]), idx) for idx, (_, _, ideal) in enumerate(ideals)]
+    total_floors = sum(floors)
+    remainder_creation = global_creation_target - total_floors
+    fractions.sort(key=lambda x: x[0], reverse=True)
+    creation_vals = floors[:]
+    for k in range(int(remainder_creation)):
+        _, idx = fractions[k % len(fractions)]
+        creation_vals[idx] += 1
+
+    # Revenus : travail en centimes pour distribution equitable
+    global_revenue_cents = int((Decimal(str(global_revenue_target)) * Decimal("100")).to_integral_value(rounding=ROUND_HALF_UP))
+    revenue_ideals = []
+    for dsm, weight in dsm_weights:
+        ideal_cents = Decimal(str(global_revenue_cents)) * Decimal(str(weight)) / Decimal(str(total_weight))
+        revenue_ideals.append(ideal_cents)
+    revenue_floors = [int(c) for c in revenue_ideals]
+    revenue_fractions = [(revenue_ideals[i] - Decimal(revenue_floors[i]), i) for i in range(len(revenue_ideals))]
+    revenue_fractions.sort(key=lambda x: x[0], reverse=True)
+    total_rev_floors = sum(revenue_floors)
+    remainder_rev_cents = global_revenue_cents - total_rev_floors
+    revenue_cents_vals = revenue_floors[:]
+    for k in range(int(remainder_rev_cents)):
+        _, idx = revenue_fractions[k % len(revenue_fractions)]
+        revenue_cents_vals[idx] += 1
+
     created_objectives = []
-    remaining_creation = global_creation_target
-    remaining_revenue = global_revenue_target
-
-    for i, (dsm, weight) in enumerate(dsm_weights):
-        is_last = i == len(dsm_weights) - 1
-
-        if is_last:
-            # Le dernier DSM prend le reste pour eliminer les arrondis
-            creation_obj = remaining_creation
-            revenue_obj = remaining_revenue
-        else:
-            creation_obj = int(
-                Decimal(str(global_creation_target)) * Decimal(str(weight)) / Decimal(str(total_weight))
-            )
-            revenue_obj = (
-                Decimal(str(global_revenue_target)) * Decimal(str(weight)) / Decimal(str(total_weight))
-            ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
-            remaining_creation -= creation_obj
-            remaining_revenue -= revenue_obj
+    for idx, (dsm, weight) in enumerate(dsm_weights):
+        creation_obj = creation_vals[idx]
+        revenue_obj = (Decimal(revenue_cents_vals[idx]) / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         # Upsert
         existing = db.query(DSMObjective).filter(
@@ -210,16 +228,24 @@ def get_objectives_for_period(
 def get_objectives_summary(
     db: Session, partner_id: int, prime_period_id: int
 ) -> dict:
-    """Resume global et par DSM des objectifs d'une periode."""
-    objectives = get_objectives_for_period(db, partner_id, prime_period_id)
+    """Resume global et par DSM des objectifs d'une periode.
 
-    total_creation = sum(o.creation_objective for o in objectives)
+    Filtre les objectifs orphelins (DSM supprime) pour ne pas afficher
+    63 POS / 26,5M historiques.
+    """
+    objectives = get_objectives_for_period(db, partner_id, prime_period_id)
+    # Filtrer orphelins
+    actual_ids = {r[0] for r in db.query(DSM.id).filter(DSM.partner_id == partner_id).all()}
+    filtered = [o for o in objectives if o.dsm_id in actual_ids]
+    use = filtered if filtered else objectives
+
+    total_creation = sum(o.creation_objective for o in use)
     total_revenue = sum(
-        float(o.revenue_objective) for o in objectives
+        float(o.revenue_objective) for o in use
     )
 
     by_dsm = []
-    for obj in objectives:
+    for obj in use:
         dsm = db.query(DSM).filter(DSM.id == obj.dsm_id).first()
         by_dsm.append({
             "dsm_id": obj.dsm_id,
@@ -234,6 +260,6 @@ def get_objectives_summary(
         "prime_period_id": prime_period_id,
         "total_creation_target": total_creation,
         "total_revenue_target": total_revenue,
-        "dsm_count": len(objectives),
+        "dsm_count": len(use),
         "by_dsm": by_dsm,
     }

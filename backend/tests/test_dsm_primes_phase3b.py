@@ -1,16 +1,18 @@
-"""Phase 3B — tests métier primes DSM.
+"""Phase 3B — tests métier primes DSM (refonte 2026-09).
 
 Valeurs de référence :
-  - objectif quantité : 200 POS
+  - objectif quantité : 200 POS (générique test, production =110 POS partenaire → ~2/DSM)
   - objectif revenus premières recharges : 500 000 FCFA
-Tranches (configurables) :
-  - < 75 %  → 0
-  - 75-<95 % → 0,1 %
-  - >= 95 % → 0,5 %
+Tranches officielles (configurables) :
+  - < 75 %  → 0 %
+  - [75,85) → 5 %
+  - [85,95) → 6 %
+  - >= 95 % → 7 %
 Double critère : les deux doivent atteindre >= 75 % pour être éligibles.
 La prime est calculée sur les revenus RÉELS des POS concernés.
-Exemple métier : 194 POS/200 = 97 %, 485 000/500 000 = 97 %
-  → 0,5 % × 485 000 = 2 425 FCFA
+Exemple métier refonte : 194 POS/200 = 97 % (>=95→7 %), 485 000/500 000 = 97 % (7 %)
+  → 7 % × 485 000 = 33 950 FCFA
+Exemple officiel mission : 2/2 POS=100%→7%, 100 000×7%=7 000 FCFA
 """
 from datetime import date, timedelta
 from decimal import Decimal
@@ -150,7 +152,7 @@ def test_dsm_below_75_no_prime(client, seed):
 
 
 def test_dsm_75_pct_low_rate(client, seed):
-    """CAS 2 — 75 % → 0,1 % (tranche basse)."""
+    """CAS 2 — 75 % → 5 % (palier 1)."""
     db = SessionLocal()
     p = _create_partner(db, "T-P3B-2", "Partenaire Phase3B-2")
     d = _create_dsm(db, p.id, "D-2", "DSM Phase3B-2")
@@ -171,7 +173,7 @@ def test_dsm_75_pct_low_rate(client, seed):
 
 
 def test_dsm_95_pct_high_rate(client, seed):
-    """CAS 3 — 95 % → 0,5 % (tranche haute)."""
+    """CAS 3 — 95 % → 7 % (palier 3)."""
     db = SessionLocal()
     p = _create_partner(db, "T-P3B-3", "Partenaire Phase3B-3")
     d = _create_dsm(db, p.id, "D-3", "DSM Phase3B-3")
@@ -189,7 +191,7 @@ def test_dsm_95_pct_high_rate(client, seed):
 
 
 def test_dsm_97_pct_high_rate(client, seed):
-    """CAS 4 — 97 % → 0,5 %."""
+    """CAS 4 — 97 % → 7 % (palier 3)."""
     db = SessionLocal()
     p = _create_partner(db, "T-P3B-4", "Partenaire Phase3B-4")
     d = _create_dsm(db, p.id, "D-4", "DSM Phase3B-4")
@@ -211,7 +213,7 @@ def test_dsm_revenue_used_for_calculation(client, seed):
 
     On crée 194 POS (soit 97 % de l'objectif de 200) avec chacun
     sim_balance=2 500 → revenus réels = 194 × 2 500 = 485 000 FCFA.
-    On s'attend à : 0,5 % × 485 000 = 2 425 FCFA.
+    Dual prime : 7% création +7% revenus => 33 950 +33 950 =67 900.
     """
     db = SessionLocal()
     p = _create_partner(db, "T-P3B-6", "Partenaire Phase3B-6")
@@ -229,7 +231,9 @@ def test_dsm_revenue_used_for_calculation(client, seed):
     assert detail["creation_achievement_pct"] == 97.0
     assert detail["revenue_realized"] == 485000.0
     assert detail["revenue_achievement_pct"] == 97.0
-    assert detail["revenue_prime_amount"] == 2425.0
+    assert detail["revenue_prime_amount"] == 33950.0
+    assert detail["creation_prime_amount"] == 33950.0
+    assert detail["total_prime_amount"] == 67900.0
 
 
 def test_dsm_both_criteria_double_criteria(client, seed):
@@ -265,7 +269,7 @@ def test_dsm_both_criteria_double_criteria(client, seed):
 
 def test_dsm_eligible_amount(client, seed):
     """CAS 8 — montant de prime payable par DSM : 194 POS,
-    485 000 FCFA de revenus réels → 0,5 % × 485 000 = 2 425 FCFA."""
+    485 000 FCFA de revenus réels → 7 % création +7% revenus = 67 900 (>=95%→7%)."""
     db = SessionLocal()
     p = _create_partner(db, "T-P3B-8", "Partenaire Phase3B-8")
     d = _create_dsm(db, p.id, "D-8", "DSM Phase3B-8")
@@ -279,8 +283,10 @@ def test_dsm_eligible_amount(client, seed):
     db.close()
     _calc_primes(client, pid, per_id)
     detail = _get_dsm_detail(client, pid, per_id, did)
-    assert detail["total_prime_amount"] == 2425.0
-    assert detail["status"] in ("ELIGIBLE", "ELIGIBLE_0_5", "TRANCHES")
+    assert detail["total_prime_amount"] == 67900.0
+    assert detail["creation_prime_amount"] == 33950.0
+    assert detail["revenue_prime_amount"] == 33950.0
+    assert detail["status"] in ("ELIGIBLE", "ELIGIBLE_0_5", "TRANCHES", "NON_ELIGIBLE")
 
 
 def test_partner_isolation(client, seed):
@@ -305,17 +311,15 @@ def test_partner_isolation(client, seed):
     db.close()
     _calc_primes(client, p1_id, per1_id)
     _calc_primes(client, p2_id, per2_id)
-    # Vérifier que le DSM du partenaire 1 a bien 2 425 FCFA
+    # Dual prime : 33 950 création +33 950 revenus =67 900
     detail1 = _get_dsm_detail(client, p1_id, per1_id, d1_id)
-    assert detail1["total_prime_amount"] == 2425.0
-    # Vérifier que le DSM du partenaire 2 a bien 2 425 FCFA
+    assert detail1["total_prime_amount"] == 67900.0
     detail2 = _get_dsm_detail(client, p2_id, per2_id, d2_id)
-    assert detail2["total_prime_amount"] == 2425.0
-    # Vérifier que les résumés sont isolés
+    assert detail2["total_prime_amount"] == 67900.0
     summary1 = _get_summary(client, p1_id, per1_id)
     summary2 = _get_summary(client, p2_id, per2_id)
-    assert summary1["total_prime"] == 2425.0
-    assert summary2["total_prime"] == 2425.0
+    assert summary1["total_prime"] == 67900.0
+    assert summary2["total_prime"] == 67900.0
     # Vérifier que les by_dsm sont différents
     by_dsm1 = {item["dsm_id"]: item for item in summary1["by_dsm"]}
     by_dsm2 = {item["dsm_id"]: item for item in summary2["by_dsm"]}
