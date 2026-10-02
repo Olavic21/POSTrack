@@ -83,10 +83,11 @@ class POSOut(BaseModel):
 
 
 class POSOutEnriched(POSOut):
-    """POS enrichi avec les données métier calculées (loading, sell-out, recettes)."""
+    """POS enrichi avec les données métier calculées (loading, sell-out, recettes, zoning)."""
     loading: int = 0
     sell_out: int = 0
     recettes: float = 0
+    zoning: dict | None = None
 
 
 class ReconductionCreate(BaseModel):

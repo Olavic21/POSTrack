@@ -17,6 +17,9 @@ vi.mock('react-leaflet', () => ({
   ),
   Popup: ({ children }) => <div data-testid="popup">{children}</div>,
   Circle: ({ center }) => <div data-testid="circle" data-center={JSON.stringify(center)} />,
+  CircleMarker: ({ children, center }) => (
+    <div data-testid="circle-marker" data-center={JSON.stringify(center)}>{children}</div>
+  ),
 }))
 
 import CarteBTS from './CarteBTS'

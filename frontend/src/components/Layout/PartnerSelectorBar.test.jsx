@@ -5,8 +5,8 @@ import PartnerSelectorBar from './PartnerSelectorBar'
 import { PartnerContext } from '../../context/PartnerContext'
 
 describe('PartnerSelectorBar', () => {
-  it('affiche le partenaire actif et le bouton de changement', () => {
-    render(
+  it('ne rend rien quand un partenaire est sélectionné (le Header affiche le contexte)', () => {
+    const { container } = render(
       <PartnerContext.Provider
         value={{
           partnerContextId: 1,
@@ -27,12 +27,11 @@ describe('PartnerSelectorBar', () => {
       </PartnerContext.Provider>
     )
 
-    expect(screen.getByText('Master Color')).toBeInTheDocument()
-    expect(screen.getByText('Changer de partenaire')).toBeInTheDocument()
+    expect(container).toBeEmptyDOMElement()
   })
 
-  it('ne rend rien sans partenaire', () => {
-    const { container } = render(
+  it("affiche l'alerte d'invitation à sélectionner un partenaire lorsqu'aucun n'est actif", () => {
+    render(
       <PartnerContext.Provider
         value={{
           partnerContextId: null,
@@ -47,37 +46,12 @@ describe('PartnerSelectorBar', () => {
         </MemoryRouter>
       </PartnerContext.Provider>
     )
-    expect(container).toBeEmptyDOMElement()
+
+    expect(screen.getByText('Sélectionnez un partenaire pour afficher les données du tableau de bord.')).toBeInTheDocument()
   })
 
-  it("affiche le bandeau « Données de démo » quand le partenaire porte __mock", () => {
-    render(
-      <PartnerContext.Provider
-        value={{
-          partnerContextId: 1,
-          partner: {
-            id: 1,
-            nom: 'Mock Co',
-            code_partenaire: 'PART-DEMO',
-            __mock: true,
-          },
-          hasPartner: true,
-          setPartner: vi.fn(),
-          clearPartner: vi.fn(),
-        }}
-      >
-        <MemoryRouter>
-          <PartnerSelectorBar />
-        </MemoryRouter>
-      </PartnerContext.Provider>
-    )
-
-    expect(screen.getByText('Mock Co')).toBeInTheDocument()
-    expect(screen.getByText('Données de démo')).toBeInTheDocument()
-  })
-
-  it("n'affiche pas le bandeau pour un partenaire réel (sans __mock)", () => {
-    render(
+  it("ne rend rien pour un partenaire réel avec hasPartner à true", () => {
+    const { container } = render(
       <PartnerContext.Provider
         value={{
           partnerContextId: 1,
@@ -97,6 +71,7 @@ describe('PartnerSelectorBar', () => {
       </PartnerContext.Provider>
     )
 
-    expect(screen.queryByText('Données de démo')).not.toBeInTheDocument()
+    expect(container).toBeEmptyDOMElement()
   })
 })
+

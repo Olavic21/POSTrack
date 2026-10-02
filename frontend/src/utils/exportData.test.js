@@ -4,6 +4,7 @@ import {
   exportExcel,
   exportJSON,
   exportPDF,
+  blobToArrayBuffer,
 } from './exportData';
 
 // Mock du moteur PDF : évite l'exécution réelle de doc.save dans jsdom.
@@ -69,7 +70,9 @@ describe('exportJSON', () => {
     const fakeDownload = (blob, fileName) => { captures = { blob, fileName }; };
 
     const res = exportJSON(ROWS, 'partenaires', { download: fakeDownload });
-    const text = await captures.blob.text();
+    // jsdom : Blob.text() peut manquer → helper dédié (FileReader/Response/arrayBuffer)
+    const buf = await blobToArrayBuffer(captures.blob);
+    const text = Buffer.from(buf).toString('utf-8');
 
     expect(captures.fileName).toMatch(/^partenaires_\d{4}-\d{2}-\d{2}\.json$/);
     expect(res.format).toBe('json');
@@ -89,7 +92,9 @@ describe('exportExcel', () => {
     const res = exportExcel(ROWS, 'partenaires', COLUMNS, {
       download: (blob, fileName) => { captured = { blob, fileName }; },
     });
-    const bytes = new Uint8Array(await captured.blob.slice(0, 2).arrayBuffer());
+    // jsdom : Blob.arrayBuffer / slice(...).arrayBuffer peuvent manquer → helper dédié
+    const buf = await blobToArrayBuffer(captured.blob.slice(0, 2));
+    const bytes = new Uint8Array(buf);
 
     expect(res.format).toBe('excel');
     expect(res.count).toBe(2);

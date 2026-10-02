@@ -68,7 +68,7 @@ export default function Dashboard() {
   const [primeSummary, setPrimeSummary] = useState<any | null>(null)
   const [selectedPrimePeriod, setSelectedPrimePeriod] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showBestPos, setShowBestPos] = useState(false)
+  const [showBestPos, setShowBestPos] = useState(true)
 
   useEffect(() => {
     let ignore = false
@@ -83,11 +83,10 @@ export default function Dashboard() {
       const kpiMonth = selectedPrimePeriod?.start_date ? selectedPrimePeriod.start_date.slice(0, 7) + '-01' : undefined
       const kpiParams = kpiMonth ? { month: kpiMonth } : undefined
       try {
-        const [statsRes, salesRes, posRes, identityRes, kpiObjRes, kpiRealRes, kpiBothRes, simLinkRes, btsEtatRes, btsProdRes] = await Promise.all([
+        const [statsRes, salesRes, posRes, kpiObjRes, kpiRealRes, kpiBothRes, simLinkRes, btsEtatRes, btsProdRes] = await Promise.all([
           analyticsService.getDashboard(partnerContextId),
           analyticsService.getSalesSummary(partnerContextId),
           posService.getEnriched({ limit: 100 }),
-          partenaireService.getIdentity(partnerContextId),
           analyticsService.getKpiObjectives(partnerContextId, kpiParams),
           analyticsService.getKpiRealisations(partnerContextId, kpiParams),
           analyticsService.getKpiDsmBothCriteria(partnerContextId, kpiParams),
@@ -95,6 +94,10 @@ export default function Dashboard() {
           analyticsService.getBtsEtat(partnerContextId),
           analyticsService.getBtsProduction(partnerContextId),
         ])
+        let identityRes = { data: null }
+        try {
+          identityRes = await partenaireService.getIdentity(partnerContextId)
+        } catch { identityRes = { data: null } }
         if (!ignore) {
           setStats(statsRes.data)
           setSalesSummary(salesRes.data)
@@ -442,18 +445,28 @@ export default function Dashboard() {
         </ChartCard>
       </div>
 
-      {/* Top POS */}
-      <div className="card overflow-hidden">
-        <button type="button" onClick={() => setShowBestPos((v) => !v)} className="flex w-full items-center justify-between p-5 text-left hover:bg-slate-50/60 transition">
+      {/* Meilleures POS partenaire — extrait Dashboard + lien vers Suivi des ventes */}
+      <div className="card overflow-hidden border-indigo-100">
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-indigo-50 to-violet-50 px-5 py-4">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Meilleurs POS du partenaire</h3>
-            <p className="text-xs text-slate-500">Classement par sell-out • {loading ? '…' : `${bestPos.length} / ${enrichedPos.length}`} affichés</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-indigo-600">Partenaire → Performance / Suivi</p>
+            <h3 className="text-sm font-extrabold text-slate-900">Meilleures POS du partenaire — {partnerLabel}</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              Extrait rapide (Top {loading ? '…' : bestPos.length}) — classement par sell-out. Le tableau complet
+              <span className="font-semibold text-indigo-700"> 10 colonnes (N° / DSM / POS / Loading Janv/Févr/Mars / Total / Moyenne / Valeurs cumulées / % cumulé)</span> est dans <span className="font-semibold">Suivi des ventes → Meilleures POS Partenaire</span> (PartnerContext={partnerContextId ?? '—'}).
+            </p>
           </div>
-          <span className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm">
-            {showBestPos ? 'Masquer' : 'Voir le classement'}
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`${showBestPos ? 'rotate-180' : ''} transition-transform`}><path d="M6 9l6 6 6-6" /></svg>
-          </span>
-        </button>
+          <div className="flex items-center gap-2">
+            <a href="/ventes#meilleures-pos-partenaire" className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition">
+              Voir le tableau complet (10 colonnes)
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+            </a>
+            <button type="button" onClick={() => setShowBestPos((v) => !v)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
+              {showBestPos ? 'Masquer' : 'Aperçu'}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`${showBestPos ? 'rotate-180' : ''} transition-transform`}><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+          </div>
+        </div>
         {showBestPos ? (
           <div className="border-t border-slate-100 overflow-x-auto max-h-[420px] overflow-y-auto">
             <table className="min-w-full divide-y divide-slate-100">
@@ -476,6 +489,9 @@ export default function Dashboard() {
                     ))}
               </tbody>
             </table>
+            <div className="bg-slate-50 px-5 py-2 text-center">
+              <a href="/ventes#meilleures-pos-partenaire" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">→ Accéder à PARTENAIRE → PERFORMANCE / SUIVI → MEILLEURES POS PARTENAIRE (10 colonnes complètes)</a>
+            </div>
           </div>
         ) : null}
       </div>

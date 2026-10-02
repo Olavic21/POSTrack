@@ -26,7 +26,7 @@ describe('DSMSummaryCard', () => {
   it('affiche le titre et la description', () => {
     render(<DSMSummaryCard data={mockData} />);
     expect(screen.getByText('Performances par DSM')).toBeInTheDocument();
-    expect(screen.getByText(/Analyse détaillée des performances par DSM/)).toBeInTheDocument();
+    expect(screen.getByText(/Loading = montant vendu par les POS/)).toBeInTheDocument();
   });
 
   it('affiche les en-têtes du tableau', () => {
@@ -49,8 +49,8 @@ describe('DSMSummaryCard', () => {
     expect(screen.getByText('75')).toBeInTheDocument(); // réalisation création
     expect(screen.getByText('50')).toBeInTheDocument(); // objectif redéploiement
     expect(screen.getByText('30')).toBeInTheDocument(); // réalisation redéploiement
-    expect(screen.getByText('200')).toBeInTheDocument(); // loading
-    expect(screen.getByText('150')).toBeInTheDocument(); // sell-out
+    expect(screen.getByText('200 FCFA')).toBeInTheDocument(); // loading
+    expect(screen.getByText('150 FCFA')).toBeInTheDocument(); // sell-out
   });
 
   it('affiche "Donnée non disponible" pour les recettes manquantes', () => {

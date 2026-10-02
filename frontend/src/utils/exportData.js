@@ -64,6 +64,23 @@ const formatCell = (value) => {
   return value;
 };
 
+export const blobToArrayBuffer = async (blob) => {
+  if (blob && typeof blob.arrayBuffer === 'function') return blob.arrayBuffer();
+  // Repli jsdom : Blob/FileReader sans arrayBuffer()
+  if (typeof FileReader !== 'undefined') {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error('FileReader failed'));
+      reader.readAsArrayBuffer(blob);
+    });
+  }
+  if (typeof Response !== 'undefined' && typeof new Response(blob).arrayBuffer === 'function') {
+    return new Response(blob).arrayBuffer();
+  }
+  throw new Error('Blob.arrayBuffer indisponible dans cet environnement');
+};
+
 /** Déclenche le téléchargement d'un Blob côté navigateur. */
 export function downloadBlob(blob, fileName) {
   const url = URL.createObjectURL(blob);

@@ -162,7 +162,7 @@ const SuiviQuotidienPage = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Suivi quotidien" subtitle="Saisie et consultation des données quotidiennes." breadcrumbs={['Espace partenaire', 'Suivi quotidien']} eyebrow="Opérations" />
+      <PageHeader title="Suivi quotidien — Saisie Sale Out / Loading" subtitle="Saisie quotidienne par POS : objectifs, réalisations, proposition d'achat et écarts (Sale Out = montant DSM→POS, Loading = montant vendu). Tous les tableaux sont filtrables par DSM et date." breadcrumbs={['Espace partenaire', 'Suivi quotidien']} eyebrow="Opérations" />
 
       <div className="card p-4 flex flex-wrap items-end gap-4">
         <div>
@@ -184,8 +184,8 @@ const SuiviQuotidienPage = () => {
       <div className="card overflow-hidden">
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">{editingId ? 'Modifier la saisie' : 'Nouvelle saisie'}</h3>
-            <p className="text-xs text-slate-500">Une saisie par POS et par date.</p>
+            <h3 className="text-sm font-bold text-slate-900">{editingId ? 'Modifier la saisie Sale Out / Loading' : 'Nouvelle saisie Sale Out / Loading'}</h3>
+            <p className="text-xs text-slate-500">Une saisie par POS et par date — alimente automatiquement les colonnes Sale Out / Loading / Objectifs / Écarts.</p>
           </div>
           {editingId ? <button type="button" onClick={cancelEdit} className="text-xs font-semibold text-slate-500 hover:text-slate-700">Annuler</button> : null}
         </div>
@@ -203,14 +203,16 @@ const SuiviQuotidienPage = () => {
               <input id="form-date" type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} disabled={!!editingId} className="input disabled:bg-slate-100" required />
             </div>
             <div>
-              <label htmlFor="form-revenue" className="label">Revenu (FCFA)</label>
+              <label htmlFor="form-revenue" className="label">Loading — Revenu vendu (FCFA)</label>
               <input id="form-revenue" type="number" min="0" step="0.01" value={formRevenue} onChange={(e) => setFormRevenue(e.target.value)} placeholder="0" className="input" />
+              <p className="mt-1 text-xs text-slate-400">Montant vendu par le POS (alimente la colonne Loading).</p>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <label htmlFor="form-stock" className="label">Sell-out (FCFA)</label>
+              <label htmlFor="form-stock" className="label">Sale Out — Réalisation (FCFA)</label>
               <input id="form-stock" type="number" min="0" step="0.01" value={formStockValue} onChange={(e) => setFormStockValue(e.target.value)} placeholder="0" className="input" />
+              <p className="mt-1 text-xs text-slate-400">Montant doté par le DSM (proposition d'achat / réalisation).</p>
             </div>
             <div>
               <label htmlFor="form-sims" className="label">SIM actives</label>

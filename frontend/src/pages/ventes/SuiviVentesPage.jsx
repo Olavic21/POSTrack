@@ -107,6 +107,8 @@ const SuiviVentesPage = () => {
     );
   }
 
+  const partnerLabel = summary?.partner_name ?? stats?.partner_name ?? (partnerContextId ? `Partenaire #${partnerContextId}` : '—');
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -114,6 +116,20 @@ const SuiviVentesPage = () => {
         subtitle="Module indépendant d'analyse des performances commerciales par partenaire, DSM et période."
         breadcrumbs={['Espace partenaire', 'Suivi des ventes']}
       />
+
+      {/* ── PERFORMANCE / SUIVI → MEILLEURES POS PARTENAIRE — section prioritaire, partenaire en évidence ── */}
+      <section id="meilleures-pos-partenaire" className="scroll-mt-4 rounded-xl border border-indigo-200 bg-indigo-50/30 p-1.5 shadow-sm">
+        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2 px-2 py-1">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-indigo-700">Partenaire → Performance / Suivi → Meilleures POS Partenaire</p>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-white px-3 py-1 text-xs font-semibold text-indigo-700 shadow-sm">
+            <span className="h-2 w-2 rounded-full bg-indigo-500" /> {partnerLabel}
+          </span>
+        </div>
+        <SalesTableCard />
+        <p className="mt-1.5 px-2 text-[11px] leading-relaxed text-slate-500">
+          Données réelles <span className="font-semibold text-slate-600">POS → DSM → Loading par période → Total → Moyenne → Valeurs cumulées → % cumulé</span> — classement par Total décroissant. Filtrage strict par <span className="font-mono text-indigo-600">partner_id={partnerContextId ?? '—'}</span> (PartnerContext).
+        </p>
+      </section>
 
       {/* Objectifs mensuels (référentiel sales-targets) */}
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -269,9 +285,6 @@ const SuiviVentesPage = () => {
       <DSMSummaryCard data={dsmSummary} />
       
       <MonthlyTableCard data={monthlyTable} />
-
-      {/* Tableau des ventes détaillé (backend /analytics/sales/table) */}
-      <SalesTableCard />
     </div>
   );
 };

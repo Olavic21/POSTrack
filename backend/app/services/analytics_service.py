@@ -1220,9 +1220,13 @@ def delete_daily_tracking(db: Session, partner_id: int, perf_id: int) -> None:
 
 # --- Table des ventes ---
 def get_sales_table(db: Session, partner_id: int, months: int = 3) -> list[dict]:
-    """Table Numéro / DSM / POS / Mois1..MoisN / Total / Moyenne – Total/Moyenne calculés backend."""
-    from datetime import timedelta
+    """Table Meilleures POS — 10 colonnes : N° / DSM / POS / Mois1..MoisN / Total / Moyenne / Cumul / % cumulé.
 
+    - Loading = POSPerformance.revenue (FCFA) par mois. Chaque colonne Mois reçoit
+      exactement la valeur du mois concerné pour le POS concerné (pas de décalage).
+    - Total = somme des N mois, Moyenne = total / N, tri DESC par Total (ranking).
+    - Valeurs cumulées / % cumulé : cumul trié par Total décroissant, % cumulé = cumul / grand_total *100.
+    """
     # Derniers N mois à partir d'aujourd'hui
     today = date.today()
     month_starts = []
@@ -1233,30 +1237,64 @@ def get_sales_table(db: Session, partner_id: int, months: int = 3) -> list[dict]
             m += 12
             y -= 1
         month_starts.append(date(y, m, 1))
-    pos_list = db.query(POS).filter(POS.partner_id == partner_id).order_by(POS.id).all()
-    rows = []
-    for idx, pos in enumerate(pos_list, start=1):
-        # Pour chaque POS, récupérer revenue par mois via POSPerformance
-        perfs = db.query(POSPerformance).filter(POSPerformance.pos_id == pos.id).all()
-        # mapper mois -> revenue
-        rev_by_month = {}
-        for p in perfs:
-            key = p.period_start.strftime("%Y-%m") if p.period_start else ""
-            rev_by_month[key] = float(p.revenue or 0)
+
+    # Pré-charger toutes les perfs du partenaire en 1 requête (pas de N+1)
+    all_perfs = db.query(POSPerformance).join(POS, POSPerformance.pos_id == POS.id).filter(
+        POS.partner_id == partner_id
+    ).all()
+    # Index par pos_id -> { "YYYY-MM": revenue }
+    perf_index: dict[int, dict[str, float]] = {}
+    for p in all_perfs:
+        key = p.period_start.strftime("%Y-%m") if p.period_start else ""
+        if not key:
+            continue
+        perf_index.setdefault(p.pos_id, {})[key] = float(p.revenue or 0)
+
+    # Charger DSM matricule en 1 requête
+    dsm_matricule = {d.id: d.matricule for d in db.query(DSM).filter(DSM.partner_id == partner_id).all()}
+
+    pos_list = db.query(POS).filter(POS.partner_id == partner_id).all()
+    unsorted = []
+    for pos in pos_list:
+        rev_by_month = perf_index.get(pos.id, {})
         mois_vals = []
         for ms in month_starts:
             key = ms.strftime("%Y-%m")
             mois_vals.append(rev_by_month.get(key, 0))
         total = sum(mois_vals)
         moyenne = total / months if months else 0
+        unsorted.append({
+            "numero_pos": pos.code_pos,
+            "numero_dsm": dsm_matricule.get(pos.dsm_id) if pos.dsm_id else None,
+            "dsm_id": pos.dsm_id,
+            "pos_id": pos.id,
+            "mois_vals": mois_vals,
+            "total": total,
+            "moyenne": moyenne,
+        })
+
+    # Tri décroissant par total (ranking Meilleures POS)
+    unsorted.sort(key=lambda r: r["total"], reverse=True)
+
+    grand_total = sum(r["total"] for r in unsorted) or 1  # éviter division par 0
+    rows = []
+    cumul = 0.0
+    for idx, r in enumerate(unsorted, start=1):
+        cumul += r["total"]
+        pct_cumule = cumul / grand_total * 100.0 if grand_total else 0.0
         rows.append(
             {
                 "numero": idx,
-                "numero_dsm": db.query(DSM.matricule).filter(DSM.id == pos.dsm_id).scalar() if pos.dsm_id else None,
-                "numero_pos": pos.code_pos,
-                **{f"mois_{i+1}": v for i, v in enumerate(mois_vals)},
-                "total": total,
-                "moyenne": moyenne,
+                "numero_dsm": r["numero_dsm"],
+                "numero_pos": r["numero_pos"],
+                "pos_id": r["pos_id"],
+                "dsm_id": r["dsm_id"],
+                **{f"mois_{i+1}": v for i, v in enumerate(r["mois_vals"])},
+                "mois_labels": [ms.strftime("%Y-%m") for ms in month_starts],
+                "total": r["total"],
+                "moyenne": round(r["moyenne"], 2),
+                "valeur_cumulee": cumul,
+                "pct_cumule": round(pct_cumule, 2),
             }
         )
     return rows

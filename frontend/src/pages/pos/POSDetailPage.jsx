@@ -29,6 +29,7 @@ export default function POSDetailPage() {
   const [linkUserId, setLinkUserId] = useState('');
   const [posSims, setPosSims] = useState([]);
   const [targetSimId, setTargetSimId] = useState('');
+  const [zoning, setZoning] = useState(null);
   const mapSectionId = 'pos-map-section';
 
   useEffect(() => {
@@ -62,6 +63,18 @@ export default function POSDetailPage() {
   }, [id]);
 
   useEffect(() => { void refreshLinkedData(); }, [refreshLinkedData]);
+
+  useEffect(() => {
+    let ignore = false
+    const loadZoning = async () => {
+      try {
+        const res = await api.get(`/pos/${id}/zoning`)
+        if (!ignore) setZoning(res.data)
+      } catch { if (!ignore) setZoning(null) }
+    }
+    void loadZoning()
+    return () => { ignore = true }
+  }, [id])
 
   const handleStatusChange = async (statut) => {
     setChangingStatus(true);
@@ -207,9 +220,12 @@ export default function POSDetailPage() {
           label="Coordonnées"
           value={<CoordinateBadge latitude={pos.latitude} longitude={pos.longitude} />}
         />
+        <InfoCard label="Zoning" value={zoning ? <ZoningBadge zoning={zoning} /> : <span className="text-slate-400 text-xs">Chargement…</span>} />
+        <InfoCard label="Micro-zone / Partenaire détecté" value={zoning?.micro_zone || zoning?.partner_name || '—'} />
         <InfoCard label="Date de prise en portefeuille" value={pos.date_prise_en_portefeuille ?? pos.date_creation} />
         <InfoCard label="Date d'expiration" value={pos.date_expiration} />
       </section>
+      {zoning?.detail ? <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600">{zoning.detail}</p> : null}
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -319,6 +335,17 @@ function InfoCard({ label, value }) {
       <div className="mt-1 text-sm font-semibold text-gray-900">{value}</div>
     </div>
   );
+}
+
+function ZoningBadge({ zoning }) {
+  const map = {
+    VERT: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    ORANGE: 'bg-amber-100 text-amber-800 border-amber-200',
+    ROUGE: 'bg-red-100 text-red-800 border-red-200',
+    INCONNU: 'bg-slate-100 text-slate-600 border-slate-200',
+  }
+  const dot = { VERT: '🟢', ORANGE: '🟠', ROUGE: '🔴', INCONNU: '⚪' }
+  return <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${map[zoning.status] || map.INCONNU}`}><span>{dot[zoning.status] || '⚪'}</span>{zoning.status}{zoning.micro_zone ? ` · ${zoning.micro_zone}` : ''}{zoning.partner_name && zoning.status === 'ROUGE' ? ` · ${zoning.partner_name}` : ''}</span>
 }
 
 function CoordinateBadge({ latitude, longitude, compact = false }) {

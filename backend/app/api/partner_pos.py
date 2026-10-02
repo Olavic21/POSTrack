@@ -21,6 +21,7 @@ from app.services.pos_service import (
     lier_detenteur, delier_detenteur, lister_liens,
 )
 from app.services.pos_linkage_service import get_pos_linkage_stats, get_pos_type_counts
+from app.services.zoning_service import get_pos_zoning, get_zoning_for_coords
 
 router = APIRouter(prefix="/api/partners/{partner_id}/pos", tags=["POS"])
 
@@ -87,11 +88,18 @@ def list_pos_enriched(
             Prime.status.in_([StatutPrime.VALIDEE, StatutPrime.PAYEE])
         ).scalar() or 0
         
+        # Zoning
+        try:
+            zoning = get_pos_zoning(db, pos)
+        except Exception:
+            zoning = {"status": "INCONNU", "color": "gray", "micro_zone": None, "partner_name": None, "detail": ""}
+
         # Créer l'objet enrichi
         pos_dict = POSOut.model_validate(pos).model_dump()
         pos_dict["loading"] = loading
         pos_dict["sell_out"] = sell_out
         pos_dict["recettes"] = float(recettes)
+        pos_dict["zoning"] = zoning
         enriched_pos.append(pos_dict)
     
     return {
@@ -103,20 +111,20 @@ def list_pos_enriched(
     }
 
 
-@router.post("", response_model=POSOut, status_code=201)
-def create_pos_route(
-    payload: POSCreate,
+@router.get("/zoning/preview")
+def zoning_preview(
     partner_id: int = Depends(get_partner_context),
+    dsm_id: int | None = None,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    zone: str | None = None,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    _user: User = Depends(get_current_user),
 ):
-    return create_pos(db, partner_id=partner_id, user_id=user.id, data=payload.model_dump())
-
-
-@router.get("/{pos_id}", response_model=POSOut)
-def get_pos(pos_id: int, partner_id: int = Depends(get_partner_context),
-            db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
-    return get_pos_in_partner(db, partner_id, pos_id)
+    """Prévisualisation zoning pour des coordonnées de saisie (avant création)."""
+    if latitude is None or longitude is None:
+        return {"status": "INCONNU", "color": "gray", "micro_zone": None, "partner_name": None, "detail": "Coordonnées manquantes"}
+    return get_zoning_for_coords(db, partner_id, dsm_id, latitude, longitude, zone)
 
 
 @router.get("/stats/linkage")
@@ -139,6 +147,30 @@ def pos_type_stats(
 ):
     """Compteurs par type de POS (NOUVEAU/RECONDUIT) pour le partenaire ou un DSM."""
     return get_pos_type_counts(db, partner_id, dsm_id)
+
+
+@router.post("", response_model=POSOut, status_code=201)
+def create_pos_route(
+    payload: POSCreate,
+    partner_id: int = Depends(get_partner_context),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return create_pos(db, partner_id=partner_id, user_id=user.id, data=payload.model_dump())
+
+
+@router.get("/{pos_id}/zoning")
+def get_zoning(pos_id: int, partner_id: int = Depends(get_partner_context),
+               db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+    """Zoning VERT/ORANGE/ROUGE pour un POS existant."""
+    pos = get_pos_in_partner(db, partner_id, pos_id)
+    return get_pos_zoning(db, pos)
+
+
+@router.get("/{pos_id}", response_model=POSOut)
+def get_pos(pos_id: int, partner_id: int = Depends(get_partner_context),
+            db: Session = Depends(get_db), _user: User = Depends(get_current_user)):
+    return get_pos_in_partner(db, partner_id, pos_id)
 
 
 @router.patch("/{pos_id}", response_model=POSOut)

@@ -34,7 +34,18 @@ const SelectPartnerPage = () => {
         if (cancelled) return;
         setPartners(list);
 
-        if ((list.length === 1 || (!hasPartner && list.length > 0)) && list[0]) {
+        if (list.length === 1 && list[0]) {
+          // Cas OPERATIONNEL ou mono-partenaire : entrée directe sans clic supplémentaire.
+          // On pose le contexte et on redirige immédiatement vers le dashboard/opérationnel.
+          setPartner(list[0]);
+          setSelectedId(list[0].id);
+          if (!cancelled) {
+            // Petit délai pour laisser le PartnerContext persister avant navigation
+            setTimeout(() => navigate('/dashboard', { replace: true }), 0);
+          }
+          return;
+        }
+        if (!hasPartner && list.length > 0 && list[0]) {
           setPartner(list[0]);
           setSelectedId(list[0].id);
         }

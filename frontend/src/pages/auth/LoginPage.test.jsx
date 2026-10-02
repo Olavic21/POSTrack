@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import LoginPage from './LoginPage'
 import { AuthContext } from '../../context/AuthContext'
 import { PartnerContext } from '../../context/PartnerContext'
+import { I18nProvider } from '../../i18n'
 
 describe('LoginPage', () => {
   it('rend le formulaire même si le contexte partenaire est indisponible', () => {
@@ -24,8 +25,7 @@ describe('LoginPage', () => {
       </AuthContext.Provider>
     )
 
-    expect(screen.getByText('POSTrack')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'POSTrack logo' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'POSTrack' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Se connecter' })).toBeInTheDocument()
   })
 
@@ -57,7 +57,7 @@ describe('LoginPage', () => {
       </AuthContext.Provider>
     )
 
-    expect(screen.getByText('POSTrack')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'POSTrack' })).toBeInTheDocument()
   })
 
   it('préremplit le formulaire depuis l aide de démo et conserve le submit manuel', async () => {

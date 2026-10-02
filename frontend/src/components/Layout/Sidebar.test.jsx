@@ -4,33 +4,36 @@ import { render, screen } from '@testing-library/react'
 import Sidebar from './Sidebar'
 import { AuthContext } from '../../context/AuthContext'
 import { PartnerContext } from '../../context/PartnerContext'
+import { I18nProvider } from '../../i18n'
 
 function renderSidebar(role) {
   return render(
-    <AuthContext.Provider
-      value={{
-        user: { role, nom_complet: 'Test' },
-        loading: false,
-        isAuthenticated: true,
-        token: 'tok',
-        login: vi.fn(),
-        logout: vi.fn(async () => {}),
-      }}
-    >
-      <PartnerContext.Provider
+    <I18nProvider>
+      <AuthContext.Provider
         value={{
-          partner: null,
-          partnerContextId: null,
-          setPartner: vi.fn(),
-          clearPartner: vi.fn(),
-          hasPartner: false,
+          user: { role, nom_complet: 'Test' },
+          loading: false,
+          isAuthenticated: true,
+          token: 'tok',
+          login: vi.fn(),
+          logout: vi.fn(async () => {}),
         }}
       >
-        <MemoryRouter>
-          <Sidebar open onClose={vi.fn()} />
-        </MemoryRouter>
-      </PartnerContext.Provider>
-    </AuthContext.Provider>
+        <PartnerContext.Provider
+          value={{
+            partner: null,
+            partnerContextId: null,
+            setPartner: vi.fn(),
+            clearPartner: vi.fn(),
+            hasPartner: false,
+          }}
+        >
+          <MemoryRouter>
+            <Sidebar open onClose={vi.fn()} />
+          </MemoryRouter>
+        </PartnerContext.Provider>
+      </AuthContext.Provider>
+    </I18nProvider>
   )
 }
 

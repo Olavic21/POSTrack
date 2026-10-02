@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react'
 import MainLayout from './MainLayout'
 import { AuthContext } from '../../context/AuthContext'
 import { PartnerContext } from '../../context/PartnerContext'
+import { I18nProvider } from '../../i18n'
 
 const authValue = {
   user: { id: 1, nom_complet: 'Admin Demo', role: 'ADMIN' },
@@ -29,27 +30,29 @@ const partnerValue = {
 
 function renderLayout() {
   return render(
-    <AuthContext.Provider value={authValue}>
-      <PartnerContext.Provider value={partnerValue}>
-        <MemoryRouter initialEntries={['/']}>
-          <Routes>
-            <Route element={<MainLayout />}>
-              <Route path="/" element={<div>Contenu du layout</div>} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </PartnerContext.Provider>
-    </AuthContext.Provider>
+    <I18nProvider>
+      <AuthContext.Provider value={authValue}>
+        <PartnerContext.Provider value={partnerValue}>
+          <MemoryRouter initialEntries={['/']}>
+            <Routes>
+              <Route element={<MainLayout />}>
+                <Route path="/" element={<div>Contenu du layout</div>} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </PartnerContext.Provider>
+      </AuthContext.Provider>
+    </I18nProvider>
   )
 }
 
 describe('MainLayout — Module A2', () => {
   it('affiche le header, le contexte partenaire et le contenu du Outlet', () => {
     renderLayout()
-    expect(screen.getByText('POSTrack')).toBeInTheDocument()
+    expect(screen.getAllByText('POSTrack').length).toBeGreaterThan(0)
     expect(screen.getByText('Contenu du layout')).toBeInTheDocument()
     expect(screen.getAllByText('Master Color').length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: 'Changer de partenaire' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Changer' })).toBeInTheDocument()
   })
 
   it('affiche la navigation latérale filtrée par rôle (ADMIN)', () => {
@@ -59,4 +62,4 @@ describe('MainLayout — Module A2', () => {
     expect(screen.getByText('Partenaires')).toBeInTheDocument()
     expect(screen.getByText('Audit')).toBeInTheDocument()
   })
-})
+})
