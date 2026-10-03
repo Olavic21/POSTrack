@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class BTSCreate(BaseModel):
@@ -32,8 +32,7 @@ class BTSOut(BaseModel):
     statut: str | None = None               # statut actuel du BTS (actif/maintenance/hors_service)
     saturation: float | None = None         # taux de saturation actuel du dernier relev
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BTSReleveCreate(BaseModel):
@@ -66,5 +65,4 @@ class BTSReleveOut(BaseModel):
     rendement: float | None
     commentaire: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

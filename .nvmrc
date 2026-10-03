@@ -1,0 +1,4 @@
+# Chaîne d'outils frontend — version de Node utilisée en CI et recommandée en local.
+# 22 est le LTS retenu pour GitHub Actions ; la plage 20.19+ reste supportee
+# (cf. "engines" de frontend/package.json).
+22.12.0

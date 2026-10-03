@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.pos_performance import SourcePerformance
 
@@ -24,8 +24,7 @@ class POSPerformanceOut(BaseModel):
     stock_value: Decimal | None = 0
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DailyTrackingCreate(BaseModel):

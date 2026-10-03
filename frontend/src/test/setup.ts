@@ -13,8 +13,12 @@ try {
     value: 'fr-FR',
     configurable: true,
   })
-} catch {}
+} catch {
+  /* jsdom sans navigator mutable : la locale reste celle de jsdom. */
+}
 
 try {
   if (!localStorage.getItem('postrack_lang')) localStorage.setItem('postrack_lang', 'fr')
-} catch {}
+} catch {
+  /* localStorage indisponible (mode prive) : l'i18n retombe sur navigator. */
+}

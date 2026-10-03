@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.models.import_batch import EntityTypeImport, StatutImport
 
@@ -19,8 +19,7 @@ class ImportBatchOut(BaseModel):
     created_at: datetime
     applied_at: datetime | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ImportRowError(BaseModel):

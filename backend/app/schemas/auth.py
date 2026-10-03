@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 from app.security.permissions import Role
 
@@ -33,8 +33,7 @@ class UserOut(BaseModel):
     dsm_id: int | None = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserCreate(BaseModel):
@@ -61,5 +60,4 @@ class PartnerAvailable(BaseModel):
     name: str
     contract_start_date: date | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
