@@ -90,6 +90,21 @@ vi.mock('./services/btsService', () => ({
   },
 }))
 
+vi.mock('./services/dsmService', () => ({
+  default: {
+    getAll: vi.fn(async () => ({ data: [] })),
+    getById: vi.fn(async () => ({ data: null })),
+  },
+}))
+
+// Test de routage App : on ne monte pas la vraie carte Leaflet de /pos.
+// POSMap crée des timers/popups Leaflet coûteux sous jsdom et rend le test
+// « affiche la liste des POS » flaky sous charge parallèle ; le stub rend
+// le montage déterministe sans changer le code fonctionnel.
+vi.mock('./components/POS/POSMap', () => ({
+  default: () => null,
+}))
+
 vi.mock('./services/requeteService', () => ({
   default: {
     list: vi.fn(async () => ({ data: [] })),
@@ -198,6 +213,12 @@ describe('App — Module A1', () => {
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(mockUser))
     localStorage.setItem(STORAGE_KEYS.PARTNER_CONTEXT_ID, String(mockPartner.id))
     localStorage.setItem(STORAGE_KEYS.PARTNER_CONTEXT, JSON.stringify(mockPartner))
+    // Locale déterministe : l'afterEach fait localStorage.clear(), ce qui
+    // efface aussi la langue mémorisée par le setup global. Sans cette ligne,
+    // I18nProvider retombe sur navigator.language (anglais sous jsdom) et les
+    // libellés français (« Liste des Partenaires », …) ne sont plus trouvés.
+    // Même pattern que NavLevelContext.test.jsx.
+    localStorage.setItem('postrack_lang', 'fr')
   })
 
   afterEach(() => {
@@ -216,16 +237,25 @@ describe('App — Module A1', () => {
   })
 
   it('affiche la liste des POS', async () => {
+    // Pré-chauffage du chunk lazy : le dynamic import de POSListPage se résout
+    // alors depuis le cache du module avant même le rendu. Sous charge parallèle
+    // (46 fichiers), le transform Vite du chunk /pos dépassait régulièrement le
+    // timeout du findBy — d'où la flakiness. Le vrai heading reste l'assertion.
+    await import('./pages/pos/POSListPage')
     renderApp(['/pos'])
-    await waitFor(() => {
-      // POSListPage utilise PageHeader title="Liste des POS" (h1)
-      expect(screen.getByRole('heading', { name: 'Liste des POS' })).toBeInTheDocument()
-    }, { timeout: 8000 })
+    // POSListPage rend PageHeader title="Liste des POS" (h1) dès le montage,
+    // puis charge les données (posService.getEnriched mocké → empty state).
+    // Seuil 8000 = convention documentée dans vitest.config.ts (testTimeout 20000).
+    expect(
+      await screen.findByRole('heading', { name: 'Liste des POS' }, { timeout: 8000 })
+    ).toBeInTheDocument()
   })
 
   it('affiche la liste des Partenaires', async () => {
     renderApp(['/partenaires'])
     await waitFor(() => {
+      // Sous charge (workers Vitest parallèles + chunk lazy), le premier
+      // rendu peut dépasser le timeout par défaut (1s) : seuil 8000 documenté.
       expect(screen.getByText('Liste des Partenaires')).toBeInTheDocument()
     }, { timeout: 8000 })
   })
@@ -235,7 +265,10 @@ describe('App — Module A1', () => {
     localStorage.removeItem(STORAGE_KEYS.PARTNER_CONTEXT)
     renderApp(['/'])
     await waitFor(() => {
+      // La résolution de session (useAuth) + chunk lazy prend plus de temps
+      // sous charge parallèle : on attend explicitement la page cible (8000 =
+      // convention vitest.config.ts).
       expect(screen.getByRole('heading', { name: 'Sélection du partenaire' })).toBeInTheDocument()
-    })
+    }, { timeout: 8000 })
   })
 })
