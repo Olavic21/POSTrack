@@ -394,11 +394,11 @@ export default function Dashboard() {
       {/* SIM & Requêtes */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="card p-5 lg:col-span-2">
-          <h3 className="text-sm font-bold text-slate-900">SIM liées / déliées</h3>
-          <p className="text-xs text-slate-400">POS.holder_user_id IS NOT NULL = liée • IS NULL = déliée</p>
+          <h3 className="text-sm font-bold text-slate-900">SIM linkées / délinkées</h3>
+          <p className="text-xs text-slate-400">POS.holder_user_id IS NOT NULL = linkée • IS NULL = délinkée</p>
           <div className="mt-4 grid grid-cols-2 gap-4">
             <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Liées</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Linkées</p>
               <p className="mt-2 text-2xl font-extrabold text-emerald-900">{loading ? '…' : formatInt(simStats.linkedCount)}</p>
               <div className="mt-2 space-y-1 text-xs text-slate-600">
                 <div className="flex justify-between"><span>Sell-out</span><span className="font-semibold">{formatInt(simStats.linkedSellOut)}</span></div>
@@ -406,7 +406,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="rounded-xl bg-amber-50 border border-amber-100 p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Déliées</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Délinkées</p>
               <p className="mt-2 text-2xl font-extrabold text-amber-900">{loading ? '…' : formatInt(simStats.unlinkedCount)}</p>
               <div className="mt-2 space-y-1 text-xs text-slate-600">
                 <div className="flex justify-between"><span>Sell-out</span><span className="font-semibold">{formatInt(simStats.unlinkedSellOut)}</span></div>
